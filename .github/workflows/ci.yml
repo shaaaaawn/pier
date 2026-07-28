@@ -1,0 +1,84 @@
+name: CI
+
+# macOS runners bill at 10x the rate of Linux ones, and this repo can only build
+# on macOS (AppKit + Xcode's swift-format). Everything below is shaped around
+# spending as few of those minutes as possible: one job, no matrix, superseded
+# runs cancelled, and docs-only commits skipped entirely.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gitignore"
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gitignore"
+  workflow_dispatch:
+
+concurrency:
+  # A new push to the same branch makes the previous run pointless — cancel it
+  # rather than paying for both.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: lint · build · test
+    runs-on: macos-15
+    # The whole job takes ~3 min. A hang would otherwise bill until the 6h
+    # default cap.
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tool versions
+        run: |
+          swift --version
+          xcodebuild -version
+          xcrun swift-format --version
+
+      # swift-format ships inside Xcode 16+ rather than being installed
+      # separately. If the runner image ever selects an older Xcode, `make lint`
+      # would fail with a confusing "unknown command" — say what's actually
+      # wrong instead.
+      - name: Verify swift-format is available
+        run: |
+          if ! xcrun --find swift-format >/dev/null 2>&1; then
+            echo "::error::swift-format not found in $(xcode-select -p)."
+            echo "::error::It ships with Xcode 16+; pick a newer Xcode on this runner."
+            exit 1
+          fi
+
+      # Style first: it's the fastest step, so a formatting miss fails in ~20s
+      # instead of after a full build.
+      - name: Lint
+        run: make lint
+
+      # Not just `swift build` — this also assembles and ad-hoc signs
+      # dist/Pier.app, which is how the app is actually run. Bundle assembly has
+      # broken before (Bundle.module can't find resources unless the SPM
+      # resource bundle is copied into Contents/Resources), and only this step
+      # catches that. The rendered icons are committed, so no SVG toolchain is
+      # needed here.
+      - name: Build app bundle
+        run: make build
+
+      - name: Test
+        run: make test
+
+      # The suite is headless-safe by construction: every parser takes captured
+      # CLI output, and no test opens a window or spawns a process. If that ever
+      # stops being true, this is where it will surface.
+      - name: Confirm the bundle is well-formed
+        run: |
+          codesign --verify --verbose dist/Pier.app
+          test -f dist/Pier.app/Contents/MacOS/Pier
+          test -f dist/Pier.app/Contents/Info.plist
