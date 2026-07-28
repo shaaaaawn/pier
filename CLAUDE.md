@@ -239,6 +239,18 @@ Two unrelated kinds of "logs" live in this app; don't confuse them.
   backstop, not permission to log argv. The single exception is a failed tool's
   error text, and it goes through `PierLog.summarize` (first line, 200 chars).
 
+## Refactoring the view layer
+
+`PortListView` is split across `PortListView+{Chrome,Activity,Rows,Events}.swift`
+as extensions of one type — see `docs/architecture.md`. Two rules:
+
+- **Verify a view refactor by pixel-diffing the fixtures**, not by eye. Render
+  all eight before, refactor, render after, `cmp` them. Byte-identical is the
+  bar; anything else needs an explanation.
+- **Extensions can't see `private` across files.** Moving a member into one of
+  these files means dropping `private`. That is the accepted cost of the split;
+  don't "fix" it by re-adding `private` and moving the member back.
+
 ## Working rules
 
 - **Never validate against a stale binary.** UI and runtime claims must be

@@ -119,6 +119,31 @@ Orchestration and UI:
 - `Tests/PierTests` — 152 tests, all over pure functions and fixture strings. No
   UI tests; the fixture renders and probes cover that ground instead.
 
+## The view layer is split by concern
+
+`PortListView` was ~1,370 lines — a fifth of the app and twice the next-biggest
+file. It's now five files, all extensions of the same type:
+
+| File | Holds |
+| --- | --- |
+| `PortListView.swift` | state, `body`, the alert switch, `content` (section assembly), footer, resize edges |
+| `+Chrome.swift` | header, search field, scope chips, sort menu, engine ⋯ menus, banners |
+| `+Activity.swift` | Docker / Apple Containers / MCP sections |
+| `+Rows.swift` | port rows, clusters, expansion, every row sub-piece |
+| `+Events.swift` | the start/stop feed |
+
+**Extensions, not new `View` structs.** The pieces share a lot of `@State` — the
+expanded row, the hovered row, the pending confirmation, the collapsed set — and
+threading all of it through as bindings would trade one kind of complexity for a
+worse one. Swift only lets extensions see `private` members within the same
+file, so members crossed by the split are module-internal now; they remain
+invisible outside the Pier module, which is the boundary that matters.
+
+**The split was verified by pixel-diffing the fixture renders.** All eight PNGs
+(`make fixture`) came out byte-identical before and after, which is a stronger
+statement about a mechanical view refactor than any test this repo could
+reasonably write. Do the same for the next one.
+
 ## Deliberate constraints
 
 - Every external tool is optional, and a failure must **say why**: a missing CLI,
