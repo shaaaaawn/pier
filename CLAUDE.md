@@ -278,6 +278,25 @@ regression in polish:
 - **The log is 0600 in a 0700 directory.** It lists every service, container and
   agent process on the machine.
 
+## Branching: work goes through PRs
+
+`main` is the deploy-ish branch and everything lands via pull request, even
+solo work. Two reasons, both concrete:
+
+- **CI gates the change before it lands**, instead of telling you afterwards
+  that `main` is red.
+- **Greptile only reviews pull requests.** Pushing straight to `main` means the
+  review integration never sees the code at all.
+
+```bash
+git checkout -b <topic> && git push -u origin <topic> && gh pr create
+```
+
+Branch protection can't enforce this — it needs GitHub Pro on a private repo
+(the API returns 403 today) — so it's a convention. If the repo ever goes
+public, or the account upgrades, enable a ruleset requiring the `lint · build ·
+test` check.
+
 ## Working rules
 
 - **Never validate against a stale binary.** UI and runtime claims must be
