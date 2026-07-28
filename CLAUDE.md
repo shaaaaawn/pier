@@ -263,6 +263,12 @@ so the two can't drift.
   macOS job without a reason worth the spend.
 - **Don't add a CodeQL workflow** — scanning is already configured as GitHub
   Apps at the account level, and it's invisible from `.github/`.
+- **A docs-only PR gets *no* checks, not a passing one.** `paths-ignore` skips
+  the workflow entirely, so `gh pr checks` reports "no checks reported"
+  (observed on #1). Harmless today. The day a ruleset *requires* the
+  `lint · build · test` check, those PRs become unmergeable — the standard fix
+  is a second always-runs job with the required name that no-ops on skipped
+  paths. Remember this before turning on required checks.
 
 ## Security invariants
 
@@ -277,6 +283,25 @@ regression in polish:
   through the child's environment. `PierLog` logs verbs and names, never argv.
 - **The log is 0600 in a 0700 directory.** It lists every service, container and
   agent process on the machine.
+
+## Branching: work goes through PRs
+
+`main` is the deploy-ish branch and everything lands via pull request, even
+solo work. Two reasons, both concrete:
+
+- **CI gates the change before it lands**, instead of telling you afterwards
+  that `main` is red.
+- **Greptile only reviews pull requests.** Pushing straight to `main` means the
+  review integration never sees the code at all.
+
+```bash
+git checkout -b <topic> && git push -u origin <topic> && gh pr create
+```
+
+Branch protection can't enforce this — it needs GitHub Pro on a private repo
+(the API returns 403 today) — so it's a convention. If the repo ever goes
+public, or the account upgrades, enable a ruleset requiring the `lint · build ·
+test` check.
 
 ## Working rules
 
