@@ -32,12 +32,12 @@ jobs:
   check:
     name: lint · build · test
     runs-on: macos-15
-    # The whole job takes ~3 min. A hang would otherwise bill until the 6h
-    # default cap.
+    # The whole job takes ~50s (measured). A hang would otherwise bill until
+    # the 6h default cap.
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Tool versions
         run: |
