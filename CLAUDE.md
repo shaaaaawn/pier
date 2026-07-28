@@ -251,6 +251,19 @@ as extensions of one type — see `docs/architecture.md`. Two rules:
   these files means dropping `private`. That is the accepted cost of the split;
   don't "fix" it by re-adding `private` and moving the member back.
 
+## CI
+
+`.github/workflows/ci.yml` — lint → build → test on macOS, ~50s. It invokes the
+same `make` targets you run locally; **change the Makefile, not the workflow**,
+so the two can't drift.
+
+- Run `make check` before pushing. It's lint + tests, which is what CI gates on
+  minus the bundle assembly.
+- macOS minutes bill at 10×. Don't add a matrix, a scheduled run, or a second
+  macOS job without a reason worth the spend.
+- **Don't add a CodeQL workflow** — scanning is already configured as GitHub
+  Apps at the account level, and it's invisible from `.github/`.
+
 ## Working rules
 
 - **Never validate against a stale binary.** UI and runtime claims must be

@@ -15,6 +15,30 @@ writes are UI preferences and its own local log at
 `~/Library/Logs/Pier/pier.log` — see
 [Privacy & security posture](#privacy--security-posture).
 
+## CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs **lint → build →
+test** on every push to `main` and every PR. One job, ~50s.
+
+It runs the same `make` targets you run locally, so there's no second source of
+truth for what "passing" means — `make check` is the local equivalent (lint +
+tests).
+
+The build step is `make build`, not `swift build`: it assembles and ad-hoc signs
+`dist/Pier.app`, and bundle assembly is where things have actually broken
+(`Bundle.module` can't find resources unless the SPM resource bundle is copied
+into `Contents/Resources`). The rendered icons are committed, so CI needs no SVG
+toolchain.
+
+macOS runners bill at **10× the Linux rate**, and this repo can't build anywhere
+else — AppKit, plus `swift-format` ships inside Xcode. So the workflow is shaped
+to spend as little as possible: no matrix, superseded runs cancelled
+(`concurrency`), docs-only commits skipped (`paths-ignore`), and a
+`timeout-minutes: 20` cap so a hang can't bill to the 6-hour default.
+
+There is deliberately **no CodeQL workflow** — code scanning is configured at the
+account level as GitHub Apps, and a workflow here would duplicate it.
+
 ## Build & run
 
 ```sh
