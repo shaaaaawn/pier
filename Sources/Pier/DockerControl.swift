@@ -148,7 +148,8 @@ enum DockerControl {
       return !value.isEmpty && !value.hasPrefix("0B") && !value.hasPrefix("0 ")
     }
     guard !meaningful.isEmpty else { return nil }
-    return meaningful
+    return
+      meaningful
       .map { "\($0.kind) \(Self.sizeOnly($0.reclaimable))" }
       .joined(separator: " · ")
   }

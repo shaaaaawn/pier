@@ -67,7 +67,8 @@ final class StatusItemRepairTests: XCTestCase {
     defaults.set(false, forKey: StatusItemRepair.visibilityKey(itemName))
     let second = StatusItemRepair.repairDefaults(defaults, autosaveName: itemName, maxScreenX: 3000)
     XCTAssertEqual(second, [])
-    XCTAssertEqual(defaults.object(forKey: StatusItemRepair.visibilityKey(itemName)) as? Bool, false)
+    XCTAssertEqual(
+      defaults.object(forKey: StatusItemRepair.visibilityKey(itemName)) as? Bool, false)
   }
 
   // MARK: - Corrupt saved position
@@ -97,7 +98,8 @@ final class StatusItemRepairTests: XCTestCase {
     let key = StatusItemRepair.positionKey(itemName)
     defaults.set(-5, forKey: key)
     XCTAssertEqual(
-      StatusItemRepair.repairDefaults(defaults, autosaveName: itemName, maxScreenX: 3000).first, key)
+      StatusItemRepair.repairDefaults(defaults, autosaveName: itemName, maxScreenX: 3000).first, key
+    )
     // A second corruption, after the one-shot visibility sweep is spent.
     defaults.set(-5, forKey: key)
     XCTAssertEqual(
@@ -107,7 +109,8 @@ final class StatusItemRepairTests: XCTestCase {
   func testRepairsLegacyItemNPositionsToo() {
     let defaults = freshDefaults()
     defaults.set(-1, forKey: StatusItemRepair.positionKey("Item-3"))
-    let cleared = StatusItemRepair.repairDefaults(defaults, autosaveName: itemName, maxScreenX: 3000)
+    let cleared = StatusItemRepair.repairDefaults(
+      defaults, autosaveName: itemName, maxScreenX: 3000)
     XCTAssertTrue(cleared.contains(StatusItemRepair.positionKey("Item-3")))
   }
 

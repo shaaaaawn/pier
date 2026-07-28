@@ -150,12 +150,15 @@ final class PortMonitor: ObservableObject {
     isRefreshing = true
     let cmuxPath = self.cmuxPath
     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-      let tcpOut = ProcessRunner.run(
-        "/usr/sbin/lsof", ["+c", "0", "-nP", "-iTCP", "-sTCP:LISTEN"], timeout: 10)?.stdout ?? ""
-      let udpOut = ProcessRunner.run("/usr/sbin/lsof", ["+c", "0", "-nP", "-iUDP"], timeout: 10)?.stdout ?? ""
+      let tcpOut =
+        ProcessRunner.run(
+          "/usr/sbin/lsof", ["+c", "0", "-nP", "-iTCP", "-sTCP:LISTEN"], timeout: 10)?.stdout ?? ""
+      let udpOut =
+        ProcessRunner.run("/usr/sbin/lsof", ["+c", "0", "-nP", "-iUDP"], timeout: 10)?.stdout ?? ""
       // %cpu + rss ride along on the existing chain probe — no extra process.
-      let psOut = ProcessRunner.run(
-        "/bin/ps", ["-axo", "pid=,ppid=,%cpu=,rss=,ucomm="], timeout: 5)?.stdout ?? ""
+      let psOut =
+        ProcessRunner.run(
+          "/bin/ps", ["-axo", "pid=,ppid=,%cpu=,rss=,ucomm="], timeout: 5)?.stdout ?? ""
 
       // cmux is optional: tolerate absence/failure entirely — but record *why*
       // it didn't work, so a blocked socket can be reported instead of looking
@@ -177,8 +180,9 @@ final class PortMonitor: ObservableObject {
       let table = ProcessTable.parse(psOut)
       // Full command lines: shared by MCP detection and by path-based harness
       // attribution (a `node <path>/cli.js` harness is invisible to ucomm).
-      let fullPS = ProcessRunner.run(
-        "/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)?.stdout ?? ""
+      let fullPS =
+        ProcessRunner.run(
+          "/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)?.stdout ?? ""
       let commands = Self.parseCommands(fullPS)
       for i in entries.indices {
         entries[i].attribution = Attributor.attribute(
@@ -186,7 +190,8 @@ final class PortMonitor: ObservableObject {
         entries[i].usage = table.usage(for: entries[i].pid)
         // Keep the surface ref alongside the label so the log panel can read
         // that surface's scrollback.
-        entries[i].cmuxSurfaceRef = cmux?
+        entries[i].cmuxSurfaceRef =
+          cmux?
           .surfaceHit(chain: table.chain(from: entries[i].pid).map(\.pid))?.ref
       }
 
@@ -292,7 +297,8 @@ final class PortMonitor: ObservableObject {
       bucketsByTitle[title]![key]!.append(entry)
     }
 
-    return groupOrder
+    return
+      groupOrder
       .map { title -> PortGroup in
         let rows: [PortRow] = bucketOrderByTitle[title]!.compactMap { key in
           let bucket = bucketsByTitle[title]![key]!
@@ -317,8 +323,14 @@ final class PortMonitor: ObservableObject {
         if sort == .activity, a.rank != Attribution.system.groupRank,
           b.rank != Attribution.system.groupRank
         {
-          let left = a.rows.map { ActivityRank.score($0.primary, series: history.series(for: $0.primary.pid)) }.max() ?? 0
-          let right = b.rows.map { ActivityRank.score($0.primary, series: history.series(for: $0.primary.pid)) }.max() ?? 0
+          let left =
+            a.rows.map {
+              ActivityRank.score($0.primary, series: history.series(for: $0.primary.pid))
+            }.max() ?? 0
+          let right =
+            b.rows.map {
+              ActivityRank.score($0.primary, series: history.series(for: $0.primary.pid))
+            }.max() ?? 0
           if left != right { return left > right }
         }
         return (a.rank, a.title) < (b.rank, b.title)
@@ -389,7 +401,8 @@ final class PortMonitor: ObservableObject {
       }
     }
     lastAppleState = appleState
-    let fullPS = commandsOutput
+    let fullPS =
+      commandsOutput
       ?? ProcessRunner.run("/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)?.stdout ?? ""
     activity += ActivityParser.mcpEntries(fullPS: fullPS, table: table, cmux: cmux)
     return activity
@@ -398,7 +411,8 @@ final class PortMonitor: ObservableObject {
   /// `Pier --print-activity`: one synchronous collection pass, printed as
   /// text. Lets the detectors be verified live without opening the panel.
   static func printActivitySnapshot() {
-    let psOut = ProcessRunner.run("/bin/ps", ["-axo", "pid=,ppid=,ucomm="], timeout: 5)?.stdout ?? ""
+    let psOut =
+      ProcessRunner.run("/bin/ps", ["-axo", "pid=,ppid=,ucomm="], timeout: 5)?.stdout ?? ""
     let activity = collectActivity(
       dockerPath: resolveBinary(
         "docker", candidates: ["/usr/local/bin/docker", "/opt/homebrew/bin/docker"]),
@@ -441,7 +455,8 @@ final class PortMonitor: ObservableObject {
     installedEngines: Set<ActivityKind>
   ) -> [ActivityGroup] {
     filter.activityKinds.compactMap { kind in
-      let entries = activity
+      let entries =
+        activity
         .filter { $0.kind == kind && $0.matches(query) }
         .sorted { a, b in
           // Running first: a stopped container is a thing you might start, not
@@ -594,7 +609,8 @@ final class PortMonitor: ObservableObject {
       return
     }
     DispatchQueue.global().async {
-      let output = ProcessRunner.run("/bin/ps", ["-p", "\(pid)", "-o", "command="], timeout: 3)?
+      let output =
+        ProcessRunner.run("/bin/ps", ["-p", "\(pid)", "-o", "command="], timeout: 3)?
         .stdout.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
       DispatchQueue.main.async {
         if !output.isEmpty { self.commandCache[pid] = output }

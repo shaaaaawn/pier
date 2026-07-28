@@ -205,7 +205,8 @@ final class MenuBarController: NSObject {
 
   private func updateTitle(_ count: Int, unseen: Int) {
     statusItem.button?.title = unseen > 0 ? " \(count) •" : " \(count)"
-    statusItem.button?.toolTip = unseen > 0
+    statusItem.button?.toolTip =
+      unseen > 0
       ? "Pier — \(unseen) new event\(unseen == 1 ? "" : "s")"
       : "Pier — listening ports"
   }
@@ -473,7 +474,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
-    PierLog.shared.log("launch — Pier \(Bundle.main.shortVersion) (\(ProcessInfo.processInfo.processIdentifier))")
+    PierLog.shared.log(
+      "launch — Pier \(Bundle.main.shortVersion) (\(ProcessInfo.processInfo.processIdentifier))")
     keepAliveActivity = ProcessInfo.processInfo.beginActivity(
       options: .userInitiatedAllowingIdleSystemSleep,
       reason: "Keep the Pier menu bar item presented")

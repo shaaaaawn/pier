@@ -95,7 +95,9 @@ final class EventDiffTests: XCTestCase {
   /// The headline case: an agent kills some of its MCP servers. The row stays,
   /// the count drops.
   func testPartialMCPKillReportsTheDelta() {
-    let before = MonitorSnapshot(activity: [mcp("node · chrome-devtools-mcp", pids: [1, 2, 3, 4, 5])])
+    let before = MonitorSnapshot(activity: [
+      mcp("node · chrome-devtools-mcp", pids: [1, 2, 3, 4, 5])
+    ])
     let after = MonitorSnapshot(activity: [mcp("node · chrome-devtools-mcp", pids: [1, 2])])
     let events = EventDiff.between(old: before, new: after, at: t)
     XCTAssertEqual(events.count, 1)

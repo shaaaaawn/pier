@@ -1,5 +1,6 @@
-@testable import Pier
 import XCTest
+
+@testable import Pier
 
 /// Every icon referenced by the harness table must exist as a 32px PNG in
 /// Sources/Pier/Resources/icons/ (run scripts/convert-icons.sh after adding
@@ -8,9 +9,9 @@ final class IconResourceTests: XCTestCase {
   private var iconsDir: URL {
     // #filePath = <package>/Tests/PierTests/IconResourceTests.swift
     URL(fileURLWithPath: #filePath)
-      .deletingLastPathComponent() // PierTests
-      .deletingLastPathComponent() // Tests
-      .deletingLastPathComponent() // <package>
+      .deletingLastPathComponent()  // PierTests
+      .deletingLastPathComponent()  // Tests
+      .deletingLastPathComponent()  // <package>
       .appendingPathComponent("Sources/Pier/Resources/icons")
   }
 

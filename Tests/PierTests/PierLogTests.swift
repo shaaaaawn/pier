@@ -37,7 +37,8 @@ final class PierLogTests: XCTestCase {
   }
 
   func testLeavesOrdinaryAssignmentsAlone() {
-    XCTAssertEqual(PierLog.redact("docker prune --filter=until=24h"),
+    XCTAssertEqual(
+      PierLog.redact("docker prune --filter=until=24h"),
       "docker prune --filter=until=24h")
     XCTAssertEqual(PierLog.redact("stop data_redis: exit 0"), "stop data_redis: exit 0")
   }

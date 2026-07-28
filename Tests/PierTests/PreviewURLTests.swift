@@ -1,5 +1,6 @@
-@testable import Pier
 import XCTest
+
+@testable import Pier
 
 final class PreviewURLTests: XCTestCase {
   private func entry(

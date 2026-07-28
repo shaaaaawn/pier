@@ -82,7 +82,10 @@ final class PreviewController: NSObject, ObservableObject, WKNavigationDelegate 
     state = .loaded
   }
 
-  func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+  func webView(
+    _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
+    withError error: Error
+  ) {
     fail(error)
   }
 
@@ -123,7 +126,8 @@ private struct IndeterminateBar: View {
 }
 
 /// Icon button with a hover background, matching the row-action style.
-private struct PreviewIconButton: View {  let symbol: String
+private struct PreviewIconButton: View {
+  let symbol: String
   let help: String
   let action: () -> Void
   @State private var hovering = false
@@ -134,7 +138,8 @@ private struct PreviewIconButton: View {  let symbol: String
         .font(.system(size: 11))
         .foregroundStyle(.secondary)
         .frame(width: 22, height: 20)
-        .background(Color.primary.opacity(hovering ? 0.10 : 0), in: RoundedRectangle(cornerRadius: 5))
+        .background(
+          Color.primary.opacity(hovering ? 0.10 : 0), in: RoundedRectangle(cornerRadius: 5))
     }
     .buttonStyle(.plain)
     .onHover { hovering = $0 }

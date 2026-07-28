@@ -62,7 +62,8 @@ enum FixtureRenderer {
   /// does). This is where a new chip or control gets caught overflowing.
   @MainActor
   static func renderNarrow(to path: String) -> Never {
-    render(to: path, entries: Array(FixtureData.entries.prefix(4)), scope: "all",
+    render(
+      to: path, entries: Array(FixtureData.entries.prefix(4)), scope: "all",
       width: PanelSize.minWidth)
   }
 
@@ -109,8 +110,9 @@ enum FixtureRenderer {
     // placeholder glyphs instead.
     let hostingView = NSHostingView(
       rootView: PortListView(
-        initialExpandedID: expanded, initialMode: mode, initialShowEvents: showEvents)
-        .environmentObject(monitor))
+        initialExpandedID: expanded, initialMode: mode, initialShowEvents: showEvents
+      )
+      .environmentObject(monitor))
     let size = NSSize(
       width: width ?? PortListView.panelWidth, height: PortListView.panelHeight)
     let window = NSWindow(
@@ -136,7 +138,8 @@ enum FixtureRenderer {
     do {
       try png.write(to: URL(fileURLWithPath: path))
     } catch {
-      FileHandle.standardError.write("render-fixture: \(error.localizedDescription)\n".data(using: .utf8)!)
+      FileHandle.standardError.write(
+        "render-fixture: \(error.localizedDescription)\n".data(using: .utf8)!)
       exit(1)
     }
     print("wrote \(path)")
@@ -185,8 +188,10 @@ enum FixtureRenderer {
           print("card: \(Int(cardWidth))×\(Int(height))pt")
           print("pageZoom: \(String(format: "%.3f", controller.webView.pageZoom))")
           print("page sees: \(measured)")
-          if let out, let rep = controller.webView.bitmapImageRepForCachingDisplay(
-            in: controller.webView.bounds) {
+          if let out,
+            let rep = controller.webView.bitmapImageRepForCachingDisplay(
+              in: controller.webView.bounds)
+          {
             controller.webView.cacheDisplay(in: controller.webView.bounds, to: rep)
             if let png = rep.representation(using: .png, properties: [:]) {
               try? png.write(to: URL(fileURLWithPath: out))
@@ -255,18 +260,21 @@ enum FixtureRenderer {
     hostingView.layoutSubtreeIfNeeded()
 
     guard let rep = hostingView.bitmapImageRepForCachingDisplay(in: hostingView.bounds) else {
-      FileHandle.standardError.write("render-fixture-preview: bitmap rep failed\n".data(using: .utf8)!)
+      FileHandle.standardError.write(
+        "render-fixture-preview: bitmap rep failed\n".data(using: .utf8)!)
       exit(1)
     }
     hostingView.cacheDisplay(in: hostingView.bounds, to: rep)
     guard let png = rep.representation(using: .png, properties: [:]) else {
-      FileHandle.standardError.write("render-fixture-preview: png encoding failed\n".data(using: .utf8)!)
+      FileHandle.standardError.write(
+        "render-fixture-preview: png encoding failed\n".data(using: .utf8)!)
       exit(1)
     }
     do {
       try png.write(to: URL(fileURLWithPath: path))
     } catch {
-      FileHandle.standardError.write("render-fixture-preview: \(error.localizedDescription)\n".data(using: .utf8)!)
+      FileHandle.standardError.write(
+        "render-fixture-preview: \(error.localizedDescription)\n".data(using: .utf8)!)
       exit(1)
     }
     print("wrote \(path)")
@@ -339,15 +347,28 @@ enum FixtureData {
     e(8231, 51731, "Cursor Helper (", attr: .harness("Cursor")),
 
     // cmux · Idle Screens — one workerd pid holding five Vite dev ports.
-    e(9122, 60342, "workerd", attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil), cpu: 94, rssMB: 890),
-    e(9122, 60345, "workerd", attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
-    e(9122, 60350, "workerd", attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
-    e(9122, 60352, "workerd", attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
-    e(9122, 60353, "workerd", attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
+    e(
+      9122, 60342, "workerd",
+      attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil), cpu: 94,
+      rssMB: 890),
+    e(
+      9122, 60345, "workerd",
+      attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
+    e(
+      9122, 60350, "workerd",
+      attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
+    e(
+      9122, 60352, "workerd",
+      attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
+    e(
+      9122, 60353, "workerd",
+      attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
 
     // cmux with a harness behind it — node dev server under a Kimi surface.
-    e(55105, 3000, "node", binds: ["::1", "127.0.0.1"],
-       attr: .cmux(workspace: "Personal Agent", surface: "Kimi", harness: "Kimi"), cpu: 9, rssMB: 220),
+    e(
+      55105, 3000, "node", binds: ["::1", "127.0.0.1"],
+      attr: .cmux(workspace: "Personal Agent", surface: "Kimi", harness: "Kimi"), cpu: 9, rssMB: 220
+    ),
 
     // Codex — two ports on one pid.
     e(4410, 8765, "codex", attr: .harness("Codex"), cpu: 0, rssMB: 64),
@@ -426,4 +447,3 @@ enum FixtureData {
       detail: "npm exec @modelcontextprotocol/server-github", pids: [7801]),
   ]
 }
-

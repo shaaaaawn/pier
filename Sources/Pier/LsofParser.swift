@@ -48,7 +48,9 @@ enum LsofParser {
       out += rest[..<range.lowerBound]
       let after = rest[range.upperBound...]
       let hex = after.prefix(2)
-      if hex.count == 2, let value = UInt8(hex, radix: 16), let scalar = Unicode.Scalar(value) as Unicode.Scalar? {
+      if hex.count == 2, let value = UInt8(hex, radix: 16),
+        let scalar = Unicode.Scalar(value) as Unicode.Scalar?
+      {
         out.append(Character(scalar))
         rest = after.dropFirst(2)
       } else {

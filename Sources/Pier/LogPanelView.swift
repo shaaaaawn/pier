@@ -20,7 +20,7 @@ struct LogPanelView: View {
   var body: some View {
     VStack(spacing: 6) {
       header
-      body_
+      content
     }
     .padding(.horizontal, 12)
     .padding(.bottom, 8)
@@ -80,7 +80,7 @@ struct LogPanelView: View {
   // MARK: - Body
 
   @ViewBuilder
-  private var body_: some View {
+  private var content: some View {
     Group {
       if !source.isAvailable {
         message("No log to tail", detail: source.label, symbol: "text.badge.xmark")

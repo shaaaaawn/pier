@@ -1,5 +1,6 @@
-@testable import Pier
 import XCTest
+
+@testable import Pier
 
 /// Token matching must respect word boundaries. A bare `hasPrefix` reported
 /// CodexBar (a usage monitor) as the Codex harness, so its child's ports were
@@ -60,19 +61,21 @@ final class HarnessMatchTests: XCTestCase {
 final class AttributionTests: XCTestCase {
   /// node (5584) <- bash (5583) <- kimi (94683) <- zsh (1000) <- launchd
   let psFixture = """
-    5584  5583 node
-    5583 94683 bash
-   94683  1000 kimi
-    1000     1 zsh
-  """
+      5584  5583 node
+      5583 94683 bash
+     94683  1000 kimi
+      1000     1 zsh
+    """
 
   let cmuxFixture = """
-  12.9\t1028612200\t22\tworkspace\tworkspace:4\twindow:1\tPersonal Agent
-  9.2\t559616400\t10\tsurface\tsurface:19\tpane:6\tKimi
-  4.0\t320515680\t1\tprocess\t94683\tsurface:19\tkimi
-  """
+    12.9\t1028612200\t22\tworkspace\tworkspace:4\twindow:1\tPersonal Agent
+    9.2\t559616400\t10\tsurface\tsurface:19\tpane:6\tKimi
+    4.0\t320515680\t1\tprocess\t94683\tsurface:19\tkimi
+    """
 
-  private func entry(pid: Int32 = 5584, port: Int = 3000, user: String = "shawn", name: String = "node") -> PortEntry {
+  private func entry(
+    pid: Int32 = 5584, port: Int = 3000, user: String = "shawn", name: String = "node"
+  ) -> PortEntry {
     PortEntry(
       pid: pid, port: port, proto: .tcp, processName: name, user: user,
       bindAddresses: ["127.0.0.1"], attribution: .none
@@ -100,7 +103,8 @@ final class AttributionTests: XCTestCase {
 
   func testCmuxAttributionWithDifferentHarnessAppended() {
     let table = ProcessTable.parse(psFixture)
-    let cmux = CmuxSnapshot.parse("""
+    let cmux = CmuxSnapshot.parse(
+      """
       1.0\t100\t1\tworkspace\tworkspace:1\twindow:1\tBackend
       1.0\t100\t1\tsurface\tsurface:2\tpane:1\tserver
       1.0\t100\t1\tprocess\t94683\tsurface:2\tzsh
@@ -140,7 +144,8 @@ final class AttributionTests: XCTestCase {
 
   func testUnattributedDevServer() {
     let table = ProcessTable.parse(psFixture)
-    let attribution = Attributor.attribute(entry: entry(pid: 77777, name: "python3"), table: table, cmux: nil)
+    let attribution = Attributor.attribute(
+      entry: entry(pid: 77777, name: "python3"), table: table, cmux: nil)
     XCTAssertEqual(attribution, .none)
     XCTAssertEqual(attribution.badgeLabel, "local")
   }
@@ -160,7 +165,8 @@ final class AttributionTests: XCTestCase {
       bucket.entries.append(e)
       byTitle[e.attribution.groupTitle] = bucket
     }
-    let titles = byTitle
+    let titles =
+      byTitle
       .sorted { $0.value.rank != $1.value.rank ? $0.value.rank < $1.value.rank : $0.key < $1.key }
       .map(\.key)
     XCTAssertEqual(titles, ["cmux · W", "Other", "System"])

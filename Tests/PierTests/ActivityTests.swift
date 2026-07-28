@@ -197,7 +197,8 @@ final class StoppedContainerTests: XCTestCase {
       """
     let entries = ActivityParser.parseDockerPS(out)
     XCTAssertEqual(entries.count, 4)
-    XCTAssertEqual(entries.filter { !$0.isRunning }.map(\.name),
+    XCTAssertEqual(
+      entries.filter { !$0.isRunning }.map(\.name),
       ["hermosa_mcp_server", "data_redis", "data_mongo"])
     let running = entries.first { $0.isRunning }
     XCTAssertEqual(running?.name, "data_postgres")

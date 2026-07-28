@@ -1,8 +1,11 @@
-@testable import Pier
 import XCTest
 
+@testable import Pier
+
 final class ClusterTests: XCTestCase {
-  private func e(_ pid: Int32, _ port: Int, attr: Attribution, name: String = "workerd") -> PortEntry {
+  private func e(_ pid: Int32, _ port: Int, attr: Attribution, name: String = "workerd")
+    -> PortEntry
+  {
     PortEntry(
       pid: pid, port: port, proto: .tcp, processName: name, user: "shawn",
       bindAddresses: ["127.0.0.1"], attribution: attr
@@ -92,7 +95,8 @@ final class SmartBadgeLabelTests: XCTestCase {
   }
 
   func testSurfaceDroppedBeforeWorkspace() {
-    let attr = Attribution.cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)
+    let attr = Attribution.cmux(
+      workspace: "Idle Screens", surface: "make dev screens", harness: nil)
     let label = attr.smartBadgeLabel(maxChars: 24)
     XCTAssertEqual(label, "cmux · Idle Screens · …")
     XCTAssertLessThanOrEqual(label.count, 24)
@@ -108,7 +112,8 @@ final class SmartBadgeLabelTests: XCTestCase {
   }
 
   func testFullLabelStillAvailable() {
-    let attr = Attribution.cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)
+    let attr = Attribution.cmux(
+      workspace: "Idle Screens", surface: "make dev screens", harness: nil)
     XCTAssertEqual(attr.badgeLabel, "cmux · Idle Screens · make dev screens")
   }
 }

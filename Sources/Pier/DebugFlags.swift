@@ -117,7 +117,9 @@ enum DebugFlags {
       for row in AppleControl.parseDiskUsage(df.stdout) {
         print("  \(row.kind): size \(row.size), reclaimable \(row.reclaimable)")
       }
-      print("summary:       \(AppleControl.reclaimableSummary(AppleControl.parseDiskUsage(df.stdout)) ?? "nothing to reclaim")")
+      print(
+        "summary:       \(AppleControl.reclaimableSummary(AppleControl.parseDiskUsage(df.stdout)) ?? "nothing to reclaim")"
+      )
     }
   }
 
@@ -142,7 +144,8 @@ enum DebugFlags {
       print("  \(group.title) — \(group.entryCount) port(s)")
       for row in group.rows.prefix(3) {
         let extra = row.primary.attribution.rowBadge(inGroup: group.title)
-        print("      \(row.primary.port) \(row.primary.processName)\(extra.map { " · " + $0 } ?? "")")
+        print(
+          "      \(row.primary.port) \(row.primary.processName)\(extra.map { " · " + $0 } ?? "")")
       }
     }
     print("cmux: \(monitor.cmuxStatus)")
@@ -187,11 +190,14 @@ enum DebugFlags {
   private static func printMenuBarState() {
     for screen in NSScreen.screens {
       let reserved = screen.frame.maxY - screen.visibleFrame.maxY
-      let state = reserved > 1
+      let state =
+        reserved > 1
         ? "\(Int(reserved))pt reserved"
         : "NOT reserved (fullscreen / auto-hide)"
       let drawn = MenuBarVisibility.isBarVisible(on: screen)
-      print("screen \(Int(screen.frame.width))×\(Int(screen.frame.height)) at y\(Int(screen.frame.minY)): \(state)")
+      print(
+        "screen \(Int(screen.frame.width))×\(Int(screen.frame.height)) at y\(Int(screen.frame.minY)): \(state)"
+      )
       print("   bar drawn right now: \(drawn)")
       // Where a panel would hang, for an item at this screen's top-right.
       let button = NSRect(
@@ -199,7 +205,9 @@ enum DebugFlags {
       let frame = PanelPlacement.frame(
         buttonRect: button, visibleFrame: screen.visibleFrame,
         size: NSSize(width: 440, height: 560), barVisible: drawn)
-      print("   a panel would top out at y\(Int(frame.maxY)) (screen top is y\(Int(screen.frame.maxY)))")
+      print(
+        "   a panel would top out at y\(Int(frame.maxY)) (screen top is y\(Int(screen.frame.maxY)))"
+      )
     }
     print("\nbar rects seen on screen: \(MenuBarVisibility.barRects().count)")
     for bar in MenuBarVisibility.barRects() {
@@ -320,11 +328,13 @@ enum DebugFlags {
         var note = ""
         if key.hasPrefix(StatusItemRepair.positionPrefix) {
           let maxX = NSScreen.screens.map { Double($0.frame.maxX) }.max()
-          note = StatusItemRepair.shouldClearPosition(value, maxScreenX: maxX)
+          note =
+            StatusItemRepair.shouldClearPosition(value, maxScreenX: maxX)
             ? "  ← WOULD CLEAR (off-screen)" : ""
         } else if key.hasPrefix(StatusItemRepair.visibilityPrefix) {
-          note = StatusItemRepair.shouldClearVisibility(
-            key: key, value: value, autosaveName: name) ? "  ← WOULD CLEAR (stale hidden)" : ""
+          note =
+            StatusItemRepair.shouldClearVisibility(
+              key: key, value: value, autosaveName: name) ? "  ← WOULD CLEAR (stale hidden)" : ""
         }
         print("  \(key) = \(value)\(note)")
       }
@@ -373,10 +383,12 @@ enum DebugFlags {
         monitor.terminate(entry.pid)  // the exact call the Kill button makes
         print("called terminate() — waiting for the diff")
       }
-      if killed, let event = monitor.events.first(where: {
-        if case .port(let p, _) = $0.subject { return p == port && $0.action == .stopped }
-        return false
-      }) {
+      if killed,
+        let event = monitor.events.first(where: {
+          if case .port(let p, _) = $0.subject { return p == port && $0.action == .stopped }
+          return false
+        })
+      {
         print("event:   \(event.summary)")
         print("self:    \(event.selfInitiated)")
         print(event.selfInitiated ? "PASS — reads as you" : "FAIL — looks unattributed")
@@ -404,8 +416,9 @@ enum DebugFlags {
     let center = UNUserNotificationCenter.current()
     center.getNotificationSettings { settings in
       print("bundle id:  \(Bundle.main.bundleIdentifier ?? "none")")
-      print("authorized: \(settings.authorizationStatus.rawValue) "
-        + "(0=notDetermined 1=denied 2=authorized 3=provisional)")
+      print(
+        "authorized: \(settings.authorizationStatus.rawValue) "
+          + "(0=notDetermined 1=denied 2=authorized 3=provisional)")
       center.requestAuthorization(options: [.alert, .sound]) { granted, error in
         print("request:    granted=\(granted) error=\(error?.localizedDescription ?? "nil")")
         guard granted else { exit(2) }

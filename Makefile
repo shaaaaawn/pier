@@ -76,5 +76,13 @@ applog: ## tail Pier's own log: ~/Library/Logs/Pier/pier.log (N=lines, default 5
 applog-follow: ## follow Pier's own log live (Ctrl-C to stop)
 	@tail -f "$$HOME/Library/Logs/Pier/pier.log"
 
+fmt: ## format sources with Xcode's bundled swift-format (no install needed)
+	xcrun swift-format format --in-place --parallel Sources/Pier/*.swift Tests/PierTests/*.swift
+
+lint: ## fail on style violations — run before committing
+	xcrun swift-format lint --strict --parallel Sources/Pier/*.swift Tests/PierTests/*.swift
+
+check: lint test ## the gate: style + the full suite
+
 clean: ## remove SPM build products
 	rm -rf .build dist/Pier.app

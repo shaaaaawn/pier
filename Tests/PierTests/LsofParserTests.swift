@@ -1,15 +1,16 @@
-@testable import Pier
 import XCTest
+
+@testable import Pier
 
 final class LsofParserTests: XCTestCase {
   let tcpFixture = """
-  COMMAND     PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
-  ControlCe  470 shawn   12u  IPv4 0xabc123      0t0  TCP 127.0.0.1:8888 (LISTEN)
-  python3  73101 shawn    3u  IPv4 0xdef456      0t0  TCP *:8931 (LISTEN)
-  node     90220 shawn   22u  IPv6 0x111         0t0  TCP [::1]:3000 (LISTEN)
-  node     90220 shawn   23u  IPv4 0x222         0t0  TCP 127.0.0.1:3000 (LISTEN)
-  rapportd   555 shawn    4u  IPv4 0x333         0t0  TCP *:49222
-  """
+    COMMAND     PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+    ControlCe  470 shawn   12u  IPv4 0xabc123      0t0  TCP 127.0.0.1:8888 (LISTEN)
+    python3  73101 shawn    3u  IPv4 0xdef456      0t0  TCP *:8931 (LISTEN)
+    node     90220 shawn   22u  IPv6 0x111         0t0  TCP [::1]:3000 (LISTEN)
+    node     90220 shawn   23u  IPv4 0x222         0t0  TCP 127.0.0.1:3000 (LISTEN)
+    rapportd   555 shawn    4u  IPv4 0x333         0t0  TCP *:49222
+    """
 
   func testPlainTcpOutput() {
     let records = LsofParser.parse(tcpFixture, proto: .tcp)
@@ -39,7 +40,7 @@ final class LsofParserTests: XCTestCase {
 
   func testDuplicatePidRowsMerge() {
     let entries = PortMonitor.buildEntries(tcp: tcpFixture, udp: "")
-    XCTAssertEqual(entries.count, 4) // 5 rows, node:3000 appears twice
+    XCTAssertEqual(entries.count, 4)  // 5 rows, node:3000 appears twice
     let node = entries.first { $0.port == 3000 }
     XCTAssertEqual(node?.pid, 90220)
     XCTAssertEqual(Set(node?.bindAddresses ?? []), ["::1", "127.0.0.1"])
@@ -47,10 +48,10 @@ final class LsofParserTests: XCTestCase {
 
   func testUdpSkipsConnectedEndpoints() {
     let udpFixture = """
-    COMMAND     PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
-    mDNSRespo   123 _mdnsresponder 6u IPv4 0x1      0t0  UDP *:5353
-    node      90220 shawn   30u  IPv4 0x2          0t0  UDP 192.168.1.5:53122->8.8.8.8:53
-    """
+      COMMAND     PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+      mDNSRespo   123 _mdnsresponder 6u IPv4 0x1      0t0  UDP *:5353
+      node      90220 shawn   30u  IPv4 0x2          0t0  UDP 192.168.1.5:53122->8.8.8.8:53
+      """
     let records = LsofParser.parse(udpFixture, proto: .udp)
     XCTAssertEqual(records.count, 1)
     XCTAssertEqual(records[0].port, 5353)

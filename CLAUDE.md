@@ -214,7 +214,10 @@ Two unrelated kinds of "logs" live in this app; don't confuse them.
 
 ## Conventions
 
-- Swift, 2-space indent, `swift-format`-compatible style. Comments explain
+- Swift, 2-space indent, enforced by Xcode's bundled `swift-format` (no install
+  needed — `xcrun swift-format`). `make fmt` formats, `make lint` fails on
+  violations, **`make check` is the gate**: lint + the full suite. Config lives
+  in `.swift-format`. Comments explain
   **why**, especially where the code looks odd because reality is odd — those
   comments are load-bearing and shouldn't be "cleaned up".
 - Every external tool is optional. A missing CLI, a stopped daemon, or a refused

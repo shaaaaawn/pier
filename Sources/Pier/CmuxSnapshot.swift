@@ -26,8 +26,9 @@ struct ProcessTable {
     for line in output.split(separator: "\n") {
       let tokens = line.split(whereSeparator: { $0 == " " || $0 == "\t" })
       guard tokens.count >= 3,
-            let pid = Int32(tokens[0]),
-            let ppid = Int32(tokens[1]) else { continue }
+        let pid = Int32(tokens[0]),
+        let ppid = Int32(tokens[1])
+      else { continue }
       // ucomm can contain spaces ("Google Chrome H"), so the name is always
       // the remainder of the line, never just one token.
       if tokens.count >= 5, let cpu = Double(tokens[2]), let rss = Int(tokens[3]) {
@@ -139,7 +140,9 @@ struct CmuxSnapshot {
       while !seen.contains(current) {
         seen.insert(current)
         if current.hasPrefix("surface:") { return current }
-        guard let parentPid = Int32(current), let parent = processParent[parentPid] else { return nil }
+        guard let parentPid = Int32(current), let parent = processParent[parentPid] else {
+          return nil
+        }
         current = parent
       }
       return nil
@@ -175,7 +178,8 @@ struct CmuxSnapshot {
   func surfaceHit(chain: [Int32]) -> (workspace: String, surface: String, ref: String)? {
     for pid in chain {
       guard let ref = processSurfaces[pid], let title = surfaceTitles[ref] else { continue }
-      let workspace = surfaceWorkspaces[ref]
+      let workspace =
+        surfaceWorkspaces[ref]
         ?? (workspaceTitles.count == 1 ? workspaceTitles.values.first : nil)
       return (workspace ?? "?", title, ref)
     }

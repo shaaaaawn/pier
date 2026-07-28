@@ -187,12 +187,15 @@ struct PortListView: View {
       Spacer()
       // The count has to describe what's actually on screen — "19 shown" over a
       // list of events is a port count in the wrong place.
-      Text(showEvents
-        ? "\(monitor.events.count) event\(monitor.events.count == 1 ? "" : "s")"
-        : "\(visibleCount) shown")
-        .font(.system(size: 11))
-        .foregroundStyle(.secondary)
-        .help(showEvents
+      Text(
+        showEvents
+          ? "\(monitor.events.count) event\(monitor.events.count == 1 ? "" : "s")"
+          : "\(visibleCount) shown"
+      )
+      .font(.system(size: 11))
+      .foregroundStyle(.secondary)
+      .help(
+        showEvents
           ? "Starts and stops seen since launch"
           : "\(monitor.entries.count) listening · \(monitor.activity.count) background")
       if !showEvents {
@@ -607,8 +610,10 @@ struct PortListView: View {
     return HStack(spacing: 0) {
       sectionHeader(
         id: group.id, count: down ? nil : group.entryCount, title: group.title,
-        subtitle: down ? "not running" : (group.stoppedCount > 0
-          ? "\(group.stoppedCount) stopped" : nil)
+        subtitle: down
+          ? "not running"
+          : (group.stoppedCount > 0
+            ? "\(group.stoppedCount) stopped" : nil)
       ) {
         activityIcon(group.kind, size: 13)
       }
@@ -616,15 +621,18 @@ struct PortListView: View {
         // The state is said once, in the header, with the action beside it —
         // a separate body row repeating "Docker isn't running" was the overlap.
         Button("Start") {
-          if group.kind == .docker { monitor.run(DockerAction.start) } else {
+          if group.kind == .docker {
+            monitor.run(DockerAction.start)
+          } else {
             monitor.run(AppleAction.start)
           }
         }
         .controlSize(.mini)
         .padding(.top, 4)
-        .help(group.kind == .docker
-          ? "Runs: docker desktop start"
-          : "Runs: container system start --enable-kernel-install")
+        .help(
+          group.kind == .docker
+            ? "Runs: docker desktop start"
+            : "Runs: container system start --enable-kernel-install")
       }
       if group.kind == .docker, monitor.dockerState != .cliMissing {
         dockerMenu
@@ -679,55 +687,56 @@ struct PortListView: View {
     .padding(.vertical, 4)
   }
 
-
   private func activityRow(_ entry: ActivityEntry) -> some View {
     VStack(spacing: 0) {
-    HStack(alignment: .center, spacing: 8) {
-      activityIcon(entry.kind, size: 15)
-        .opacity(entry.isRunning ? 1 : 0.45)
-        .frame(width: 54, alignment: .trailing)
-      VStack(alignment: .leading, spacing: 2) {
-        HStack(spacing: 5) {
-          Text(entry.name)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(entry.isRunning ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
-            .lineLimit(1)
-            .truncationMode(.middle)
-          if entry.count > 1 {
-            Text(verbatim: "×\(entry.count)")
-              .font(.system(size: 9, weight: .medium, design: .rounded))
-              .padding(.horizontal, 5)
-              .padding(.vertical, 1)
-              .background(Color.secondary.opacity(0.15), in: Capsule())
-              .foregroundStyle(.secondary)
+      HStack(alignment: .center, spacing: 8) {
+        activityIcon(entry.kind, size: 15)
+          .opacity(entry.isRunning ? 1 : 0.45)
+          .frame(width: 54, alignment: .trailing)
+        VStack(alignment: .leading, spacing: 2) {
+          HStack(spacing: 5) {
+            Text(entry.name)
+              .font(.system(size: 12, weight: .semibold))
+              .foregroundStyle(
+                entry.isRunning ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary)
+              )
+              .lineLimit(1)
+              .truncationMode(.middle)
+            if entry.count > 1 {
+              Text(verbatim: "×\(entry.count)")
+                .font(.system(size: 9, weight: .medium, design: .rounded))
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(Color.secondary.opacity(0.15), in: Capsule())
+                .foregroundStyle(.secondary)
+            }
+            if entry.kind == .mcp, entry.attribution != .none {
+              badge(entry.attribution)
+            }
           }
-          if entry.kind == .mcp, entry.attribution != .none {
-            badge(entry.attribution)
-          }
+          activitySubline(entry)
         }
-        activitySubline(entry)
+        Spacer(minLength: 4)
+        activityTrailing(entry)
       }
-      Spacer(minLength: 4)
-      activityTrailing(entry)
-    }
-    .padding(.leading, 12)
-    .padding(.trailing, 10)
-    .padding(.vertical, 4.5)
-    .background(rowHighlight(entry.id))
-    .contentShape(Rectangle())
-    .onTapGesture {
-      guard LogSource.resolve(activity: entry).isAvailable else { return }
-      toggle(entry.id, mode: .logs)
-    }
-    .onHover { hovering in hover(entry.id, hovering: hovering) }
-    .help(entry.detail)
+      .padding(.leading, 12)
+      .padding(.trailing, 10)
+      .padding(.vertical, 4.5)
+      .background(rowHighlight(entry.id))
+      .contentShape(Rectangle())
+      .onTapGesture {
+        guard LogSource.resolve(activity: entry).isAvailable else { return }
+        toggle(entry.id, mode: .logs)
+      }
+      .onHover { hovering in hover(entry.id, hovering: hovering) }
+      .help(entry.detail)
 
-    if isShowing(entry.id, .logs) {
-      LogPanelView(
-        source: LogSource.resolve(activity: entry),
-        toolPath: monitor.toolPath(for: LogSource.resolve(activity: entry)),
-        fixtureLines: monitor.isFixture ? FixtureData.logLines : nil)
-    }
+      if isShowing(entry.id, .logs) {
+        LogPanelView(
+          source: LogSource.resolve(activity: entry),
+          toolPath: monitor.toolPath(for: LogSource.resolve(activity: entry)),
+          fixtureLines: monitor.isFixture ? FixtureData.logLines : nil)
+      }
     }
   }
 
@@ -762,7 +771,8 @@ struct PortListView: View {
     let visible = hoveredRowID == entry.id || !entry.isRunning
     return HStack(spacing: 10) {
       if let port = entry.ports.first,
-         let url = URL(string: "http://127.0.0.1:\(port)") {
+        let url = URL(string: "http://127.0.0.1:\(port)")
+      {
         Button {
           NSWorkspace.shared.open(url)
         } label: {
@@ -851,7 +861,8 @@ struct PortListView: View {
       Image(systemName: "rectangle.split.3x1")
         .font(.system(size: 9))
     } else if let iconName = Attributor.iconName(forHarnessLabel: group.title),
-              let image = HarnessIcons.image(named: iconName) {
+      let image = HarnessIcons.image(named: iconName)
+    {
       Image(nsImage: image)
         .resizable()
         .frame(width: 13, height: 13)
@@ -1207,7 +1218,8 @@ struct PortListView: View {
   @ViewBuilder
   private func badgeIcon(_ attribution: Attribution) -> some View {
     if let iconName = attribution.iconName,
-       let image = HarnessIcons.image(named: iconName) {
+      let image = HarnessIcons.image(named: iconName)
+    {
       Image(nsImage: image)
         .resizable()
         .frame(width: 12, height: 12)
@@ -1328,7 +1340,8 @@ struct SparklineView: View {
       let color = tint.opacity(0.85)
       // Right-aligned: a young series grows in from the right edge.
       for (offsetFromRight, fraction) in heights.reversed().enumerated() {
-        let x = size.width
+        let x =
+          size.width
           - CGFloat(offsetFromRight + 1) * barWidth
           - CGFloat(offsetFromRight) * spacing
         let barHeight = max(1, fraction * size.height)

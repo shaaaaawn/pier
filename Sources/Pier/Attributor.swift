@@ -35,7 +35,8 @@ let harnessTable: [HarnessRule] = [
   HarnessRule(token: "codexbar", label: "CodexBar", icon: nil),
   HarnessRule(token: "codex", label: "Codex", icon: "codex", pathTokens: ["codex-cli"]),
   HarnessRule(token: "opencode", label: "OpenCode", icon: "opencode", pathTokens: ["opencode"]),
-  HarnessRule(token: "kimi", label: "Kimi", icon: "kimi-code", pathTokens: ["kimi-code", "kimi-cli"]),
+  HarnessRule(
+    token: "kimi", label: "Kimi", icon: "kimi-code", pathTokens: ["kimi-code", "kimi-cli"]),
   HarnessRule(token: "gemini", label: "Gemini CLI", icon: nil, pathTokens: ["gemini-cli"]),
   HarnessRule(token: "aider", label: "Aider", icon: "aider", pathTokens: ["aider"]),
   HarnessRule(token: "cursor", label: "Cursor", icon: "cursor", pathTokens: ["cursor-agent"]),
@@ -47,12 +48,14 @@ let harnessTable: [HarnessRule] = [
   // Popular harnesses that mostly run as `node <path>` / `python -m <pkg>`,
   // where only the path names the tool.
   HarnessRule(token: "cline", label: "Cline", icon: "cline", pathTokens: ["cline"]),
-  HarnessRule(token: "kilo", label: "Kilo Code", icon: "kilo", pathTokens: ["kilo-code", "kilocode"]),
+  HarnessRule(
+    token: "kilo", label: "Kilo Code", icon: "kilo", pathTokens: ["kilo-code", "kilocode"]),
   HarnessRule(token: "roo", label: "Roo Code", icon: "roo", pathTokens: ["roo-code", "roocode"]),
   HarnessRule(token: "kiro", label: "Kiro", icon: "kiro", pathTokens: ["kiro"]),
   HarnessRule(token: "junie", label: "Junie", icon: "junie", pathTokens: ["junie"]),
   HarnessRule(token: "jules", label: "Jules", icon: "jules"),
-  HarnessRule(token: "droid", label: "Factory Droid", icon: "factory-droid", pathTokens: ["factory-droid"]),
+  HarnessRule(
+    token: "droid", label: "Factory Droid", icon: "factory-droid", pathTokens: ["factory-droid"]),
   HarnessRule(token: "qwen", label: "Qwen Code", icon: "qwen-code", pathTokens: ["qwen-code"]),
   HarnessRule(token: "qoder", label: "Qoder", icon: "qoder", pathTokens: ["qoder"]),
   HarnessRule(token: "refact", label: "Refact.ai", icon: "refact-ai", pathTokens: ["refact"]),
@@ -60,12 +63,15 @@ let harnessTable: [HarnessRule] = [
   HarnessRule(token: "codebuddy", label: "CodeBuddy", icon: "codebuddy", pathTokens: ["codebuddy"]),
   HarnessRule(token: "openhands", label: "OpenHands", icon: "openhands", pathTokens: ["openhands"]),
   HarnessRule(token: "devin", label: "Devin", icon: "devin", pathTokens: ["devin"]),
-  HarnessRule(token: "augment", label: "Augment Code", icon: "augment-code", pathTokens: ["augment-code"]),
-  HarnessRule(token: "mistral", label: "Mistral Vibe", icon: "mistral-vibe", pathTokens: ["mistral-vibe"]),
+  HarnessRule(
+    token: "augment", label: "Augment Code", icon: "augment-code", pathTokens: ["augment-code"]),
+  HarnessRule(
+    token: "mistral", label: "Mistral Vibe", icon: "mistral-vibe", pathTokens: ["mistral-vibe"]),
   HarnessRule(token: "trae", label: "Trae", icon: "trae", pathTokens: ["trae-agent"]),
   HarnessRule(token: "zencoder", label: "Zencoder", icon: "zencoder", pathTokens: ["zencoder"]),
   HarnessRule(token: "sweep", label: "Sweep", icon: "sweep"),
-  HarnessRule(token: "replit", label: "Replit Agent", icon: "replit-agent", pathTokens: ["replit-agent"]),
+  HarnessRule(
+    token: "replit", label: "Replit Agent", icon: "replit-agent", pathTokens: ["replit-agent"]),
   HarnessRule(token: "coco", label: "Snowflake Coco", icon: "snowflake-coco"),
   HarnessRule(token: "mimo", label: "MiMo Code", icon: "mimo-code", pathTokens: ["mimo-code"]),
   HarnessRule(token: "genie", label: "Cosine Genie", icon: "cosine-genie"),
@@ -148,7 +154,8 @@ enum Attributor {
   static func segmentMatches(_ segment: String, token: String) -> Bool {
     if segment == token { return true }
     guard let range = segment.range(of: token) else { return false }
-    let before = range.lowerBound == segment.startIndex
+    let before =
+      range.lowerBound == segment.startIndex
       ? nil : segment[segment.index(before: range.lowerBound)]
     let after = range.upperBound == segment.endIndex ? nil : segment[range.upperBound]
     let okBefore = before.map { !$0.isLetter && !$0.isNumber } ?? true

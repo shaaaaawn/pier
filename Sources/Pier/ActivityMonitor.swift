@@ -261,7 +261,8 @@ extension Attributor {
   ) -> Attribution {
     if user == "root" { return .system }
     let chain = table.chain(from: pid)
-    let harness = chain.lazy.compactMap { harnessLabel(for: $0.name) }.first
+    let harness =
+      chain.lazy.compactMap { harnessLabel(for: $0.name) }.first
       ?? harnessLabel(for: processName)
     if let cmux, let hit = cmux.attribution(chain: chain.map(\.pid)) {
       return .cmux(workspace: hit.workspace, surface: hit.surface, harness: harness)
