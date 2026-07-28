@@ -65,7 +65,6 @@ final class MenuBarController: NSObject {
   private let panel: PanelWindow
   private var dismissMonitor: Any?
   private var keyMonitor: Any?
-  private var menuBarFollowTimer: Timer?
   /// The button rect the panel was last aligned to (debug: the item can move
   /// after opening, when its own title width changes).
   private var lastAnchorRect: NSRect = .zero
@@ -265,49 +264,27 @@ final class MenuBarController: NSObject {
     monitor.windowVisible = true
     monitor.markEventsSeen()
     installDismissMonitors()
-    startFollowingMenuBar()
   }
 
   func closePanel() {
-    menuBarFollowTimer?.invalidate()
-    menuBarFollowTimer = nil
     removeDismissMonitors()
     panel.orderOut(nil)
     statusItem.button?.highlight(false)
     monitor.windowVisible = false
   }
 
-  /// Keep the panel attached to the top edge when the menu bar disappears
-  /// underneath it.
-  ///
-  /// In a fullscreen space (or with auto-hide on) the bar reveals on hover and
-  /// hides again once the pointer moves away — including while this panel is
-  /// open, because a custom panel isn't a menu and macOS offers no way to pin the
-  /// bar down. The panel would then hang ~30pt below nothing, which reads as
-  /// "floating in the wrong place".
-  ///
-  /// Only the **vertical** anchor is followed. The item's horizontal position
-  /// jitters as its own title width changes (the port count gains a digit), and
-  /// chasing that would slide the panel sideways while you're using it.
-  private func startFollowingMenuBar() {
-    menuBarFollowTimer?.invalidate()
-    let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
-      self?.followMenuBarIfNeeded()
-    }
-    timer.tolerance = 0.2
-    RunLoop.main.add(timer, forMode: .common)
-    menuBarFollowTimer = timer
-  }
-
-  private func followMenuBarIfNeeded() {
-    guard panel.isVisible else { return }
-    let target = anchoredFrame()
-    // 4pt of slack: only a real bar show/hide (~30pt) should move the panel.
-    guard abs(target.maxY - panel.frame.maxY) > 4 else { return }
-    var frame = panel.frame
-    frame.origin.y = target.maxY - frame.height
-    panel.setFrame(frame, display: true)
-  }
+  // The panel used to chase the menu bar: a 0.5s timer re-anchored it whenever
+  // the bar hid or revealed, keeping it glued to the top edge.
+  //
+  // That solved the wrong problem. The bar hides because the display is running
+  // a fullscreen space, where macOS reveals it only while the pointer is at the
+  // top edge — and no ordinary window can hold it open; only a real NSMenu can,
+  // which Pier deliberately isn't (docs/codexbar-practices.md §11). So the bar
+  // was always going to hide, and chasing it turned a static ~30pt gap into the
+  // panel *jumping* every time the pointer crossed the top edge. The motion is
+  // what read as broken, not the gap.
+  //
+  // The panel now anchors once, on open, and stays put until it closes.
 
   /// Dismiss like a menu would: a click anywhere else, or Escape. Mouse
   /// monitors need no permissions (only key events would).
@@ -402,28 +379,22 @@ final class MenuBarController: NSObject {
       """
   }
 
-  /// Debug: verify the follow loop. Simulates the panel going stale — exactly
-  /// what a menu bar hide does to it — and reports whether it was corrected.
-  func menuBarFollowReport() -> String {
-    let anchored = anchoredFrame()
-    var stale = panel.frame
-    stale.origin.y -= 30  // as if the bar hid and the panel stayed put
-    panel.setFrame(stale, display: true)
-    let before = panel.frame
-
-    // Two ticks of the 0.5s follow timer.
-    RunLoop.current.run(until: Date().addingTimeInterval(1.3))
+  /// Debug: the panel must stay exactly where it opened. This replaced a probe
+  /// that asserted the opposite — that the panel re-anchored itself after the
+  /// menu bar hid. Chasing the bar was the bug, so the assertion inverted.
+  func panelStabilityReport() -> String {
+    let opened = panel.frame
+    // Long enough to have covered several ticks of the old 0.5s follow timer,
+    // and to span a bar hide/reveal if the pointer crosses the top edge.
+    RunLoop.current.run(until: Date().addingTimeInterval(2.5))
     let after = panel.frame
-
-    let corrected = abs(after.maxY - anchored.maxY) < 2
+    let stable = opened == after
     let report = """
-      anchor wants top: y\(Int(anchored.maxY))
-      nudged to:        y\(Int(before.maxY))  (30pt stale, as a bar hide leaves it)
-      after 2 ticks:    y\(Int(after.maxY))
-      corrected: \(corrected) · moved \(Int(after.maxY - before.maxY))pt
-      x unchanged: \(before.minX == after.minX) (item jitter must not slide it)
+      opened at: \(rect(opened))
+      2.5s later: \(rect(after))
+      stable: \(stable)\(stable ? "" : "  ← the panel moved on its own")
       """
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { exit(corrected ? 0 : 1) }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { exit(stable ? 0 : 1) }
     return report
   }
 
@@ -531,13 +502,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       }
     }
 
-    // Debug: --probe-menubar-follow nudges the panel out of position (as a
-    // menu bar hide would) and checks the follow loop pulls it back.
-    if CommandLine.arguments.contains("--probe-menubar-follow") {
+    // Debug: --probe-panel-stable opens the panel and checks it doesn't move
+    // on its own — the menu bar hiding must no longer drag it around.
+    if CommandLine.arguments.contains("--probe-panel-stable") {
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
         controller.simulateClick()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-          print(controller.menuBarFollowReport())
+          print(controller.panelStabilityReport())
         }
       }
     }

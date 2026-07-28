@@ -65,6 +65,7 @@ machine and prints what it found:
 | `--log-path` | where Pier writes its log | |
 | `--probe-self-event` | that Pier's own kills read as "you", not as an unattributed stop | `make selfevent` |
 | `--probe-statusitem` | persisted defaults that can hide or misplace the menu bar icon | `make statusitem` |
+| `--probe-panel-stable` | that the open panel never moves on its own | |
 | `--probe-notify` | whether this bundle may post a system notification (it may not — see below) | |
 
 All the `--print-*` probes are read-only: none of them prune, start or stop
@@ -151,9 +152,18 @@ Automatically hide and show the menu bar** on — the bar reveals on hover and
 hides again once the pointer moves away, *including while this panel is open*.
 
 macOS offers no way for a custom panel to pin the bar down: it only holds the bar
-for a real `NSMenu` that's tracking. So instead of pretending otherwise, the panel
-**follows** the bar — it re-anchors to the screen's top edge when the bar isn't
-drawn, rather than hanging a bar's height below where the bar used to be.
+for a real `NSMenu` that's tracking, and Pier's panel is a window (see
+[`docs/codexbar-practices.md`](docs/codexbar-practices.md) §11 for why staying a
+window is the right trade).
+
+The panel therefore **anchors once, on open, and stays put**. It briefly did the
+opposite — a 0.5s timer re-anchored it to the screen's top edge whenever the bar
+retracted. That was solving the wrong problem: the bar was always going to hide,
+and chasing it converted a static ~30pt gap into the panel *jumping* every time
+the pointer crossed the top edge. The motion is what read as broken, not the gap.
+
+The detection below is still live: `MenuBarVisibility` decides where the panel
+anchors *at open time*, and `--print-menubar` remains the way to see the state.
 
 Detecting that turned out to be the hard part, because **none of the obvious
 signals move.** Sampled over 12s while the bar auto-hid and revealed
@@ -173,13 +183,9 @@ without Screen Recording permission — only window contents and names need it.
 A display that permanently reserves bar space short-circuits to "visible", so
 ordinary displays never depend on the window lookup.
 
-Only the **vertical** anchor is followed. The item's horizontal position jitters
-as its own title width changes (the port count gaining a digit is worth 8pt), and
-chasing that would slide the panel sideways while you're using it.
-
 ```sh
 Pier --print-menubar            # which displays reserve bar space right now
-Pier --probe-menubar-follow     # nudge the panel stale, verify it's corrected
+Pier --probe-panel-stable       # open the panel, verify it doesn't move on its own
 ```
 
 `--print-menubar` is the quick way to see the state — on a three-display setup
