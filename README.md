@@ -696,6 +696,15 @@ What Pier does and doesn't do, since it inspects your machine:
   is the inline preview's `WKWebView` loading the localhost URL you clicked, in a
   **non-persistent** data store — a previewed dev server leaves no cookies,
   localStorage or caches behind.
+- **The preview can't be navigated off-host.** A previewed page is untrusted —
+  it's whatever is listening on a port, possibly something an agent started.
+  Without a navigation policy, one `302`, `<meta refresh>` or
+  `location = "https://…"` would make Pier fetch from an arbitrary external
+  host, quietly breaking the line above. `PreviewNavigationPolicy` allows only
+  the host Pier asked for plus loopback, and only over `http`/`https` — so
+  `file:`, `data:` and `javascript:` are refused too. A blocked navigation is
+  logged, and if it was the *first* load, it's surfaced in the card rather than
+  leaving a spinner.
 - **No shell.** Every subprocess is launched with an argv array (`ProcessRunner`),
   never through `sh -c`, so container and process names taken from command output
   can't be interpreted as shell.
@@ -704,7 +713,9 @@ What Pier does and doesn't do, since it inspects your machine:
   environment rather than `--password <secret>`.
 - **Two things are written to disk, both local:** UI preferences in
   `UserDefaults` (panel size, filter chip, preview width), and Pier's own log at
-  `~/Library/Logs/Pier/pier.log` (see [Local logs](#local-logs)). The log records
+  `~/Library/Logs/Pier/pier.log`, created **0600 in a 0700 directory** — it's an
+  inventory of everything running on the machine, which shouldn't be readable by
+  other local users (see [Local logs](#local-logs)). The log records
   *what Pier did* — launches, engine actions, container start/stop, kills, engine
   state changes. It deliberately **never records command lines, environment
   variables, or scan output**, because those routinely carry secrets. The one

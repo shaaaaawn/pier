@@ -23,6 +23,9 @@ final class PreviewController: NSObject, ObservableObject, WKNavigationDelegate 
   }()
   private var lastURL: URL?
   private var timeoutItem: DispatchWorkItem?
+  /// The host Pier asked for. Navigation away from it is refused — see
+  /// `PreviewNavigationPolicy`.
+  private var expectedHost: String?
 
   override init() {
     super.init()
@@ -31,6 +34,7 @@ final class PreviewController: NSObject, ObservableObject, WKNavigationDelegate 
 
   func load(_ url: URL) {
     lastURL = url
+    expectedHost = url.host
     state = .loading
     scheduleTimeout()
     webView.load(URLRequest(url: url))
@@ -75,6 +79,32 @@ final class PreviewController: NSObject, ObservableObject, WKNavigationDelegate 
     if (error as NSError).code == NSURLErrorCancelled { return }
     timeoutItem?.cancel()
     state = .failed(error.localizedDescription)
+  }
+
+  /// The previewed page is untrusted: it's whatever is listening on a port,
+  /// which may well be something an agent started. Left unrestricted, a single
+  /// `location = "https://attacker.example"` would turn Pier into an outbound
+  /// HTTP client for an arbitrary host and break the no-network posture.
+  func webView(
+    _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+    decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+  ) {
+    guard let url = navigationAction.request.url else {
+      decisionHandler(.cancel)
+      return
+    }
+    guard PreviewNavigationPolicy.allows(url, expectedHost: expectedHost) else {
+      PierLog.shared.log("preview blocked navigation to \(url.host ?? url.scheme ?? "?")")
+      // If the *first* load is what got redirected away, the user would be left
+      // watching a spinner forever, so say what happened.
+      if state == .loading {
+        timeoutItem?.cancel()
+        state = .failed("Blocked navigation to \(url.host ?? url.scheme ?? "another host")")
+      }
+      decisionHandler(.cancel)
+      return
+    }
+    decisionHandler(.allow)
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

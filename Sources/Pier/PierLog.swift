@@ -29,10 +29,20 @@ final class PierLog: @unchecked Sendable {
   static var fileURL: URL { directory.appendingPathComponent("pier.log") }
   static var previousURL: URL { directory.appendingPathComponent("pier.log.1") }
 
+  /// The log is an inventory of what runs on this machine — every service,
+  /// container, agent-spawned process and port. Default file mode would leave
+  /// that readable by every local user, so the file is 0600 and its directory
+  /// 0700.
+  static let fileMode: NSNumber = 0o600
+  static let directoryMode: NSNumber = 0o700
+
   /// Serial so interleaved writes from the monitor queue and the main thread
   /// can't split a line.
   private let queue = DispatchQueue(label: "com.pier.log")
   private var enabled = true
+  /// A log written before the 0600 default existed keeps its old mode, so the
+  /// first write of each session tightens it.
+  private var didTightenPermissions = false
 
   private init() {}
 
@@ -60,9 +70,17 @@ final class PierLog: @unchecked Sendable {
     let fm = FileManager.default
     let url = Self.fileURL
     if !fm.fileExists(atPath: url.path) {
-      try fm.createDirectory(at: Self.directory, withIntermediateDirectories: true)
-      fm.createFile(atPath: url.path, contents: nil)
+      try fm.createDirectory(
+        at: Self.directory, withIntermediateDirectories: true,
+        attributes: [.posixPermissions: Self.directoryMode])
+      fm.createFile(
+        atPath: url.path, contents: nil, attributes: [.posixPermissions: Self.fileMode])
+    } else if !didTightenPermissions {
+      try? fm.setAttributes([.posixPermissions: Self.fileMode], ofItemAtPath: url.path)
+      try? fm.setAttributes(
+        [.posixPermissions: Self.directoryMode], ofItemAtPath: Self.directory.path)
     }
+    didTightenPermissions = true
     let handle = try FileHandle(forWritingTo: url)
     defer { try? handle.close() }
     let end = try handle.seekToEnd()

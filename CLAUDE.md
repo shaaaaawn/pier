@@ -264,6 +264,20 @@ so the two can't drift.
 - **Don't add a CodeQL workflow** — scanning is already configured as GitHub
   Apps at the account level, and it's invisible from `.github/`.
 
+## Security invariants
+
+Three properties the README states as fact. Breaking one is a bug, not a
+regression in polish:
+
+- **No outbound requests beyond the previewed host.** The preview's
+  `WKNavigationDelegate` must keep a `decidePolicyFor` handler backed by
+  `PreviewNavigationPolicy`. Removing it re-opens the hole where any previewed
+  page can redirect Pier to an arbitrary external host.
+- **Secrets never enter argv.** `ps` is world-readable; the cmux password goes
+  through the child's environment. `PierLog` logs verbs and names, never argv.
+- **The log is 0600 in a 0700 directory.** It lists every service, container and
+  agent process on the machine.
+
 ## Working rules
 
 - **Never validate against a stale binary.** UI and runtime claims must be
