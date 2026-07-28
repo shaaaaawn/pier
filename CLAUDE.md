@@ -270,6 +270,22 @@ so the two can't drift.
   is a second always-runs job with the required name that no-ops on skipped
   paths. Remember this before turning on required checks.
 
+## "Unreachable" is two different faults
+
+`docker ps` failing does not tell you *why*, and the two whys need opposite
+responses:
+
+- **`.notRunning`** — nothing is listening. Start is the right offer.
+- **`.failing(reason)`** — something answered and refused. Start does nothing;
+  the message is the whole value.
+
+Collapsing both into "not running" once cost a live debugging session: Docker
+Desktop's proxy was answering the socket while unable to reach dockerd in its
+VM (`no route to host`), so every call 500'd. Pier said "not running" under a
+Start button, `docker desktop status` said "running" (trap #1), and the actual
+error was visible nowhere. `DockerControl.fault(from:)` classifies it now and
+the section header shows the engine's own words in its tooltip.
+
 ## Security invariants
 
 Three properties the README states as fact. Breaking one is a bug, not a

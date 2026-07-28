@@ -108,6 +108,63 @@ enum DockerControl {
   }
 
   /// Classify from a real API call's result (e.g. `docker ps`).
+  /// *Why* an engine is unreachable, which is not the same question as
+  /// whether it is. A stopped daemon and a daemon whose API is returning 500s
+  /// both fail `docker ps`, but only the first is fixed by Start — and telling
+  /// someone "not running" when Docker is plainly running sends them looking in
+  /// the wrong place. Observed live: Docker Desktop's proxy answering the
+  /// socket while it couldn't reach dockerd in the VM ("no route to host"),
+  /// with `docker desktop status` still reporting "running".
+  enum Fault: Equatable {
+    /// Nothing is listening. Start is the right offer.
+    case notRunning
+    /// Something answered and refused. Start will not help; the message will.
+    case failing(String)
+
+    var headline: String {
+      switch self {
+      case .notRunning: return "not running"
+      case .failing: return "not responding"
+      }
+    }
+
+    var detail: String? {
+      switch self {
+      case .notRunning: return nil
+      case .failing(let message): return message
+      }
+    }
+  }
+
+  /// Classify a failed probe. nil when the probe succeeded.
+  static func fault(from result: ProcessRunner.Result?, cliInstalled: Bool) -> Fault? {
+    guard cliInstalled else { return .notRunning }
+    guard let result else { return .failing("The docker CLI did not respond in time.") }
+    guard state(from: result, cliInstalled: true) != .ready else { return nil }
+
+    let text = result.combined
+    let lower = text.lowercased()
+    // The daemon-is-down phrasings Docker uses. These are the Start case.
+    if lower.contains("cannot connect to the docker daemon")
+      || lower.contains("is the docker daemon running")
+      || lower.contains("failed to connect to the docker api")
+      || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    {
+      return .notRunning
+    }
+    return .failing(firstLine(text))
+  }
+
+  /// Engine errors are long and often repeat the socket path; one line is
+  /// enough to point somewhere, and it has to fit a 340pt panel.
+  static func firstLine(_ text: String, limit: Int = 140) -> String {
+    let line =
+      text.split(separator: "\n").first.map(String.init)?
+      .trimmingCharacters(in: .whitespaces) ?? ""
+    if line.isEmpty { return "Unknown error." }
+    return line.count <= limit ? line : String(line.prefix(limit)) + "…"
+  }
+
   static func state(from result: ProcessRunner.Result?, cliInstalled: Bool) -> EngineState {
     guard cliInstalled else { return .cliMissing }
     guard let result else { return .unreachable }

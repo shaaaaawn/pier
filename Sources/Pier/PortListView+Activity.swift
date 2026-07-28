@@ -73,6 +73,13 @@ extension PortListView {
     }
   }
 
+  /// "not running" when nothing is listening, "not responding" when something
+  /// answered and refused — Start only helps with the first.
+  func engineFaultHeadline(for kind: ActivityKind) -> String {
+    guard kind == .docker, let fault = monitor.dockerFault else { return "not running" }
+    return fault.headline
+  }
+
   /// The engine behind a section, or nil for MCP (no engine to be up or down).
   func engineState(for kind: ActivityKind) -> EngineState? {
     switch kind {
@@ -230,6 +237,7 @@ extension PortListView {
   /// collapse, so a busy machine stays scannable.
   func sectionHeader<Icon: View>(
     id: String, count: Int?, title: String, subtitle: String? = nil,
+    subtitleHelp: String? = nil,
     @ViewBuilder icon: () -> Icon
   ) -> some View {
     let isCollapsed = collapsed.contains(id)
@@ -254,6 +262,9 @@ extension PortListView {
         Text(subtitle)
           .font(.system(size: 9.5))
           .foregroundStyle(.tertiary)
+          // The engine's own words. Too long for the row, but the difference
+          // between "start it" and "it's broken, here's why".
+          .help(subtitleHelp ?? "")
       }
       Spacer()
     }

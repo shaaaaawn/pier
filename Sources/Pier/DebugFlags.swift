@@ -227,6 +227,10 @@ enum DebugFlags {
     let ps = ProcessRunner.run(docker, ["ps", "--format", "{{.Names}}"], timeout: 8)
     let state = DockerControl.state(from: ps, cliInstalled: true)
     print("engine:     \(state)")
+    if let fault = DockerControl.fault(from: ps, cliInstalled: true) {
+      print("fault:      \(fault.headline)")
+      if let detail = fault.detail { print("because:    \(detail)") }
+    }
     // `docker desktop status` is shown only to make the discrepancy visible —
     // it is deliberately NOT what `state` is based on.
     if let status = ProcessRunner.run(docker, ["desktop", "status"], timeout: 8)?.stdout {

@@ -13,6 +13,9 @@ final class PortMonitor: ObservableObject {
   @Published private(set) var dockerState: EngineState = .cliMissing
   /// Same, for Apple's `container` engine.
   @Published private(set) var appleState: EngineState = .cliMissing
+  /// Why the docker probe failed, when it did — populated only while
+  /// `dockerState` is not ready.
+  @Published private(set) var dockerFault: DockerControl.Fault?
   @Published private(set) var dockerReclaimable: String?
   @Published private(set) var appleReclaimable: String?
   @Published private(set) var lastRefresh: Date?
@@ -222,6 +225,7 @@ final class PortMonitor: ObservableObject {
           PierLog.shared.log("apple engine: \(self.appleState) → \(Self.lastAppleState)")
         }
         self.dockerState = Self.lastDockerState
+        self.dockerFault = Self.lastDockerFault
         self.appleState = Self.lastAppleState
         self.history.record(readings)
         let now = Date()
@@ -372,6 +376,10 @@ final class PortMonitor: ObservableObject {
   /// is down (non-zero exit → skipped below).
   /// Set by `collectActivity` so the caller can publish it (the collector is
   /// static so it stays callable from the CLI probes).
+  /// Why the last docker probe failed, when it did. Kept beside the state so
+  /// the panel can say "not responding — <reason>" instead of the misleading
+  /// "not running" for an engine that is running but refusing.
+  nonisolated(unsafe) static var lastDockerFault: DockerControl.Fault?
   nonisolated(unsafe) static var lastDockerState: EngineState = .cliMissing
   nonisolated(unsafe) static var lastAppleState: EngineState = .cliMissing
 
@@ -387,9 +395,12 @@ final class PortMonitor: ObservableObject {
         ["ps", "-a", "--format", "{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"],
         timeout: 5)
       dockerState = DockerControl.state(from: result, cliInstalled: true)
+      lastDockerFault = DockerControl.fault(from: result, cliInstalled: true)
       if dockerState.isReady, let result {
         activity += ActivityParser.parseDockerPS(result.stdout)
       }
+    } else {
+      lastDockerFault = nil
     }
     lastDockerState = dockerState
     var appleState = EngineState.cliMissing
