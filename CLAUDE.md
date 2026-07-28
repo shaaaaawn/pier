@@ -263,6 +263,12 @@ so the two can't drift.
   macOS job without a reason worth the spend.
 - **Don't add a CodeQL workflow** — scanning is already configured as GitHub
   Apps at the account level, and it's invisible from `.github/`.
+- **A docs-only PR gets *no* checks, not a passing one.** `paths-ignore` skips
+  the workflow entirely, so `gh pr checks` reports "no checks reported"
+  (observed on #1). Harmless today. The day a ruleset *requires* the
+  `lint · build · test` check, those PRs become unmergeable — the standard fix
+  is a second always-runs job with the required name that no-ops on skipped
+  paths. Remember this before turning on required checks.
 
 ## Security invariants
 
