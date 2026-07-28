@@ -95,10 +95,11 @@ enum FixtureRenderer {
     _ = NSApplication.shared
     NSApp.setActivationPolicy(.accessory)
 
-    // The chips read @AppStorage, so seeding the default selects a state.
-    if let scope, PierFilter(rawValue: scope) != nil {
-      UserDefaults.standard.set(scope, forKey: "listFilter")
-    }
+    // Pin *every* UI preference, not just the scope chip, and restore them on
+    // exit. Seeding only the chip meant a scopeless render inherited whatever
+    // the last one left behind — and it wrote into the running app's own
+    // defaults. See FixtureDefaults.
+    FixtureDefaults.apply(scope: scope.flatMap { PierFilter(rawValue: $0) != nil ? $0 : nil })
 
     let monitor = PortMonitor(
       fixture: entries, activity: activity ?? FixtureData.activity,
