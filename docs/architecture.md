@@ -1,5 +1,8 @@
 # Pier architecture
 
+> Developer reference. Start with the [documentation index](index.md) if you are
+> installing or using Pier.
+
 Menu bar app (LSUIElement, no Dock icon) that lists listening ports, attributes
 each to the agent harness / cmux session that spawned it, and manages the
 container engines and MCP servers running alongside them. Plain SPM executable,
@@ -116,8 +119,8 @@ Orchestration and UI:
 - `scripts/convert-icons.sh` — brand icons → 32px PNGs. Sources are **not** in
   the repo; set `PIER_ICON_SRC`. The PNGs are checked in, so building never needs
   this.
-- `Tests/PierTests` — 152 tests, all over pure functions and fixture strings. No
-  UI tests; the fixture renders and probes cover that ground instead.
+- `Tests/PierTests` — headless tests over pure functions and captured output. No
+  UI tests; fixture renders and live probes cover that ground instead.
 
 ## The view layer is split by concern
 
@@ -151,8 +154,10 @@ reasonably write. Do the same for the next one.
   gets its own state, stated **once** — in the section header, with the action
   beside it. Silent degradation was a bug here twice; so was saying the same
   state in three places at once.
-- No network, no shell, and no disk writes beyond `UserDefaults` UI prefs and
-  `~/Library/Logs/Pier/pier.log`. Secrets never enter argv, and never reach the
-  log — see `PierLog`.
+- No telemetry or background service API calls. A user-opened preview loads its
+  page and subresources in a non-persistent web view; top-level navigation is
+  host-restricted. No shell, and no disk writes beyond `UserDefaults` UI prefs
+  and `~/Library/Logs/Pier/pier.log`. Secrets never enter argv or the log — see
+  `PierLog`.
 - Long-lived state the UI reads through `@AppStorage` must not be written during
   a drag — it rebuilds the whole list. See `ResizeHandle`.

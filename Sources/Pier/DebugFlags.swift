@@ -152,8 +152,8 @@ enum DebugFlags {
   }
 
   /// `--watch-menubar`: sample the signals that could tell us the bar hid, for
-  /// 12s, printing only changes. Answers the question the follow loop depends on:
-  /// does anything observable actually change when the bar auto-hides?
+  /// 12s, printing only changes. Shows which signal changes when the bar
+  /// auto-hides; the panel uses it when choosing its initial anchor.
   private static func watchMenuBar() {
     print("sampling 12s — hover the menu bar, then move away…")
     var last = ""
@@ -179,14 +179,13 @@ enum DebugFlags {
       RunLoop.current.run(until: Date().addingTimeInterval(0.25))
     }
     print("done. barDrawn[] is per display, in NSScreen.screens order — that is the")
-    print("signal the panel follows. The parenthesised ones never move; they are")
+    print("signal Pier observes. The parenthesised ones never move; they are")
     print("printed only to show that they don't.")
   }
 
   /// `--print-menubar`: whether the menu bar currently reserves space on each
-  /// display, and where a panel would be anchored as a result. Run it from a
-  /// normal desktop and again from a fullscreen space to see the difference the
-  /// panel has to follow.
+  /// display, and where a panel would initially be anchored as a result. Run it
+  /// from a normal desktop and again from a fullscreen space to compare states.
   private static func printMenuBarState() {
     for screen in NSScreen.screens {
       let reserved = screen.frame.maxY - screen.visibleFrame.maxY
@@ -213,8 +212,8 @@ enum DebugFlags {
     for bar in MenuBarVisibility.barRects() {
       print("   x\(Int(bar.minX)) y\(Int(bar.minY)) \(Int(bar.width))×\(Int(bar.height))")
     }
-    print("\nmacOS only holds the bar down for a tracking NSMenu, so the panel")
-    print("re-anchors to the screen top when the bar retracts instead.")
+    print("\nmacOS only holds the bar down for a tracking NSMenu. Pier anchors")
+    print("once when the panel opens, then keeps it still as the bar changes.")
   }
 
   /// `--print-docker`: engine state and what a prune would reclaim. Read-only —
