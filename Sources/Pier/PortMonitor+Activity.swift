@@ -26,15 +26,10 @@ extension PortMonitor {
   /// Background activity: docker + apple containers + MCP processes.
   /// Every section degrades to empty when its CLI is missing or its daemon
   /// is down (non-zero exit → skipped below).
-  /// Set by `collectActivity` so the caller can publish it (the collector is
-  /// static so it stays callable from the CLI probes).
-  nonisolated(unsafe) static var lastDockerState: EngineState = .cliMissing
-  nonisolated(unsafe) static var lastAppleState: EngineState = .cliMissing
-
   static func collectActivity(
     dockerPath: String?, containerPath: String?, table: ProcessTable, cmux: CmuxSnapshot?,
     commandsOutput: String? = nil
-  ) -> [ActivityEntry] {
+  ) -> (entries: [ActivityEntry], dockerState: EngineState, appleState: EngineState) {
     var activity: [ActivityEntry] = []
     var dockerState = EngineState.cliMissing
     if let dockerPath {
@@ -47,7 +42,6 @@ extension PortMonitor {
         activity += ActivityParser.parseDockerPS(result.stdout)
       }
     }
-    lastDockerState = dockerState
     var appleState = EngineState.cliMissing
     if let containerPath {
       let result = ProcessRunner.run(containerPath, ["list", "--all"], timeout: 8)
@@ -56,12 +50,11 @@ extension PortMonitor {
         activity += ActivityParser.parseContainerList(result.stdout)
       }
     }
-    lastAppleState = appleState
     let fullPS =
       commandsOutput
       ?? ProcessRunner.run("/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)?.stdout ?? ""
     activity += ActivityParser.mcpEntries(fullPS: fullPS, table: table, cmux: cmux)
-    return activity
+    return (entries: activity, dockerState: dockerState, appleState: appleState)
   }
 
   /// `Pier --print-activity`: one synchronous collection pass, printed as
@@ -69,7 +62,7 @@ extension PortMonitor {
   static func printActivitySnapshot() {
     let psOut =
       ProcessRunner.run("/bin/ps", ["-axo", "pid=,ppid=,ucomm="], timeout: 5)?.stdout ?? ""
-    let activity = collectActivity(
+    let snapshot = collectActivity(
       dockerPath: resolveBinary(
         "docker", candidates: ["/usr/local/bin/docker", "/opt/homebrew/bin/docker"]),
       containerPath: resolveBinary(
@@ -77,7 +70,7 @@ extension PortMonitor {
       table: ProcessTable.parse(psOut),
       cmux: nil)
     for kind in [ActivityKind.docker, .apple, .mcp] {
-      let entries = activity.filter { $0.kind == kind }
+      let entries = snapshot.entries.filter { $0.kind == kind }
       print("\(kind.sectionTitle): \(entries.isEmpty ? "(none)" : "")")
       for e in entries {
         let count = e.count > 1 ? " ×\(e.count)" : ""

@@ -159,9 +159,10 @@ final class PortMonitor: ObservableObject {
       let entries = assembled.entries
       let table = assembled.table
 
-      let activity = Self.collectActivity(
+      let activitySnapshot = Self.collectActivity(
         dockerPath: self?.dockerPath, containerPath: self?.containerPath,
         table: table, cmux: cmux, commandsOutput: fullPS)
+      let activity = activitySnapshot.entries
 
       let readings = MonitorAssembly.cpuReadings(
         entries: entries, activity: activity, table: table)
@@ -173,14 +174,14 @@ final class PortMonitor: ObservableObject {
         self.cmuxStatus = cmuxStatus
         // Only transitions are logged — a per-refresh line would bury the
         // interesting events under one entry every 5 seconds.
-        if self.dockerState != Self.lastDockerState {
-          PierLog.shared.log("docker engine: \(self.dockerState) → \(Self.lastDockerState)")
+        if self.dockerState != activitySnapshot.dockerState {
+          PierLog.shared.log("docker engine: \(self.dockerState) → \(activitySnapshot.dockerState)")
         }
-        if self.appleState != Self.lastAppleState {
-          PierLog.shared.log("apple engine: \(self.appleState) → \(Self.lastAppleState)")
+        if self.appleState != activitySnapshot.appleState {
+          PierLog.shared.log("apple engine: \(self.appleState) → \(activitySnapshot.appleState)")
         }
-        self.dockerState = Self.lastDockerState
-        self.appleState = Self.lastAppleState
+        self.dockerState = activitySnapshot.dockerState
+        self.appleState = activitySnapshot.appleState
         self.history.record(readings)
         let now = Date()
         self.recordEvents(ports: entries, activity: activity, now: now)
