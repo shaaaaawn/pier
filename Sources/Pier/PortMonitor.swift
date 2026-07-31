@@ -13,8 +13,8 @@ final class PortMonitor: ObservableObject {
   @Published private(set) var dockerState: EngineState = .cliMissing
   /// Same, for Apple's `container` engine.
   @Published private(set) var appleState: EngineState = .cliMissing
-  /// Why the docker probe failed, when it did — populated only while
-  /// `dockerState` is not ready.
+  /// Why the docker probe failed, when it did — populated only when the Docker
+  /// CLI is present and the last probe produced a fault.
   @Published private(set) var dockerFault: DockerControl.Fault?
   @Published private(set) var dockerReclaimable: String?
   @Published private(set) var appleReclaimable: String?

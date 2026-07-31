@@ -264,8 +264,15 @@ final class EngineFaultTests: XCTestCase {
 
   /// A timeout is not the same as a refusal — the CLI never answered.
   func testTimeoutIsFailing() {
+    let timedOut = ProcessRunner.Result(stdout: "", stderr: "", exitCode: 9, timedOut: true)
+    let fault = DockerControl.fault(from: timedOut, cliInstalled: true)
+    XCTAssertEqual(fault?.headline, "not responding")
+  }
+
+  func testLaunchFailureIsFailing() {
     let fault = DockerControl.fault(from: nil, cliInstalled: true)
     XCTAssertEqual(fault?.headline, "not responding")
+    XCTAssertEqual(fault?.detail, "The docker CLI could not be launched.")
   }
 
   func testHealthyEngineHasNoFault() {

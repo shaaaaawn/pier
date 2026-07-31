@@ -139,7 +139,10 @@ enum DockerControl {
   /// Classify a failed probe. nil when the probe succeeded.
   static func fault(from result: ProcessRunner.Result?, cliInstalled: Bool) -> Fault? {
     guard cliInstalled else { return .notRunning }
-    guard let result else { return .failing("The docker CLI did not respond in time.") }
+    guard let result else { return .failing("The docker CLI could not be launched.") }
+    if result.timedOut {
+      return .failing("The docker CLI did not respond in time.")
+    }
     guard state(from: result, cliInstalled: true) != .ready else { return nil }
 
     let text = result.combined

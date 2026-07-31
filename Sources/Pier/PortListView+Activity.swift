@@ -23,9 +23,10 @@ extension PortListView {
       sectionHeader(
         id: group.id, count: down ? nil : group.entryCount, title: group.title,
         subtitle: down
-          ? "not running"
+          ? engineFaultHeadline(for: group.kind)
           : (group.stoppedCount > 0
-            ? "\(group.stoppedCount) stopped" : nil)
+            ? "\(group.stoppedCount) stopped" : nil),
+        subtitleHelp: down ? engineFaultDetail(for: group.kind) : nil
       ) {
         activityIcon(group.kind, size: 13)
       }
@@ -78,6 +79,11 @@ extension PortListView {
   func engineFaultHeadline(for kind: ActivityKind) -> String {
     guard kind == .docker, let fault = monitor.dockerFault else { return "not running" }
     return fault.headline
+  }
+
+  func engineFaultDetail(for kind: ActivityKind) -> String? {
+    guard kind == .docker else { return nil }
+    return monitor.dockerFault?.detail
   }
 
   /// The engine behind a section, or nil for MCP (no engine to be up or down).
