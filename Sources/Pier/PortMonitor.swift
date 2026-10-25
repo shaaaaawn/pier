@@ -119,11 +119,12 @@ final class PortMonitor: ObservableObject {
     isRefreshing = true
     let cmuxPath = self.cmuxPath
     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-      let tcpOut =
+      // One lsof for both protocols: each call walks every process's file
+      // table, so two calls cost twice as much for the same rows.
+      let socketsOut =
         ProcessRunner.run(
-          "/usr/sbin/lsof", ["+c", "0", "-nP", "-iTCP", "-sTCP:LISTEN"], timeout: 10)?.stdout ?? ""
-      let udpOut =
-        ProcessRunner.run("/usr/sbin/lsof", ["+c", "0", "-nP", "-iUDP"], timeout: 10)?.stdout ?? ""
+          "/usr/sbin/lsof", ["+c", "0", "-nP", "-iTCP", "-sTCP:LISTEN", "-iUDP"], timeout: 10)?
+        .stdout ?? ""
       // %cpu + rss ride along on the existing chain probe — no extra process.
       let psOut =
         ProcessRunner.run(
@@ -155,7 +156,7 @@ final class PortMonitor: ObservableObject {
       // pure function of what it returned, and is tested as one.
       let assembled = MonitorAssembly.ports(
         from: ProbeOutput(
-          tcp: tcpOut, udp: udpOut, processTable: psOut, commandLines: fullPS, cmux: cmux))
+          sockets: socketsOut, processTable: psOut, commandLines: fullPS, cmux: cmux))
       let entries = assembled.entries
       let table = assembled.table
 

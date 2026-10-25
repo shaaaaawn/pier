@@ -8,10 +8,8 @@ import Foundation
 /// port, whose harness spawned it, which cmux surface to read logs from) could
 /// only be exercised by running the real binaries on a real machine.
 struct ProbeOutput {
-  /// `lsof +c 0 -nP -iTCP -sTCP:LISTEN`
-  var tcp: String = ""
-  /// `lsof +c 0 -nP -iUDP`
-  var udp: String = ""
+  /// `lsof +c 0 -nP -iTCP -sTCP:LISTEN -iUDP` — one call, both protocols.
+  var sockets: String = ""
   /// `ps -axo pid=,ppid=,%cpu=,rss=,ucomm=`
   var processTable: String = ""
   /// `ps -axo pid=,user=,command=` — full command lines, needed for
@@ -33,13 +31,17 @@ struct AssembledPorts {
 /// applied one level up.
 enum MonitorAssembly {
   static func ports(from probe: ProbeOutput) -> AssembledPorts {
-    var entries = PortMonitor.buildEntries(tcp: probe.tcp, udp: probe.udp)
+    var entries = PortMonitor.buildEntries(sockets: probe.sockets)
     let table = ProcessTable.parse(probe.processTable)
     let commands = PortMonitor.parseCommands(probe.commandLines)
 
+    // One cache per refresh, shared by every entry: their ancestor chains
+    // overlap heavily. Built here and dropped with this call, so a reused pid
+    // can never inherit a stale label.
+    let labels = CommandLabelCache(commands)
     for i in entries.indices {
       entries[i].attribution = Attributor.attribute(
-        entry: entries[i], table: table, cmux: probe.cmux, commands: commands)
+        entry: entries[i], table: table, cmux: probe.cmux, labels: labels)
       entries[i].usage = table.usage(for: entries[i].pid)
       // Kept alongside the label so the log panel can read that surface's
       // scrollback — the only way a dev server's own output is readable from

@@ -16,11 +16,49 @@ extension PortMonitor {
   static func parseCommands(_ output: String) -> [Int32: String] {
     var map: [Int32: String] = [:]
     for line in output.split(separator: "\n") {
-      let tokens = line.split(whereSeparator: { $0 == " " || $0 == "\t" })
-      guard tokens.count >= 3, let pid = Int32(tokens[0]) else { continue }
-      map[pid] = tokens.dropFirst(2).joined(separator: " ")
+      if let (pid, command) = commandLine(line) { map[pid] = command }
     }
     return map
+  }
+
+  /// One `pid user command…` line → (pid, command), with the command's
+  /// whitespace collapsed to single spaces, exactly as splitting on spaces/tabs
+  /// and re-joining always produced.
+  ///
+  /// Fast path: `ps` almost never puts tabs or doubled spaces inside a command,
+  /// and in that case the remainder already *is* the re-joined string. The old
+  /// split-and-join built an array of every token of every process — ~1,000
+  /// lines, some over 9,000 characters — and was ~13 ms of every refresh.
+  /// No tab, no two spaces in a row, no trailing space — checked on bytes,
+  /// because walking ~9 KB as Characters (grapheme segmentation) cost more than
+  /// the split it was meant to avoid. Byte-clean implies the Character-level
+  /// split-and-join reproduces the text verbatim: its separators are exactly the
+  /// " " and "\t" Characters, which need those bytes.
+  static func isSingleSpaced(_ text: Substring) -> Bool {
+    var previousWasSpace = false
+    for byte in text.utf8 {
+      if byte == 0x09 { return false }
+      if byte == 0x20 {
+        if previousWasSpace { return false }
+        previousWasSpace = true
+      } else {
+        previousWasSpace = false
+      }
+    }
+    return !previousWasSpace
+  }
+
+  static func commandLine(_ line: Substring) -> (Int32, String)? {
+    let isSpace = { (c: Character) in c == " " || c == "\t" }
+    let afterLead = line.drop(while: isSpace)
+    let pidToken = afterLead.prefix(while: { !isSpace($0) })
+    let afterPid = afterLead.dropFirst(pidToken.count).drop(while: isSpace)
+    let userToken = afterPid.prefix(while: { !isSpace($0) })
+    let rest = afterPid.dropFirst(userToken.count).drop(while: isSpace)
+    guard !userToken.isEmpty, !rest.isEmpty, let pid = Int32(pidToken) else { return nil }
+    if isSingleSpaced(rest) { return (pid, String(rest)) }
+    let tokens = rest.split(whereSeparator: isSpace)
+    return (pid, tokens.joined(separator: " "))
   }
 
   /// Background activity: docker + apple containers + MCP processes.

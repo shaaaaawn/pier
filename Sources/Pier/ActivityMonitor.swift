@@ -179,6 +179,10 @@ enum ActivityParser {
     }
     let mcpish = { (s: String) in s.contains("mcp") || s.contains("modelcontextprotocol") }
     let raws: [Raw] = fullPS.split(separator: "\n").compactMap { line in
+      // ~1,000 lines arrive per refresh and a handful are MCP servers. Without
+      // this, every line was split, re-joined and lowercased before the first
+      // check could reject it.
+      guard mightMentionMCP(line) else { return nil }
       let tokens = line.split(whereSeparator: { $0 == " " || $0 == "\t" })
       guard tokens.count >= 3, let pid = Int32(tokens[0]) else { return nil }
       let command = tokens.dropFirst(2).joined(separator: " ")
@@ -210,6 +214,52 @@ enum ActivityParser {
       entry.usage = table.usage(for: entry.pids)
       return entry
     }
+  }
+
+  private static let mcpNeedles: [[UInt8]] = [
+    Array("mcp".utf8), Array("modelcontextprotocol".utf8),
+  ]
+
+  /// Cheap gate in front of `isMCPCommand`: can this raw `ps` line possibly
+  /// contain an MCP token? It must never reject a line the full check would
+  /// accept, so it scans the *whole* line (a superset of the tokens that check
+  /// examines) for either needle — "modelcontextprotocol" has to be its own
+  /// needle because it doesn't contain "mcp".
+  ///
+  /// ASCII case folding matches `lowercased()` exactly for these needles: the
+  /// only non-ASCII scalars that lowercase into ASCII are the Kelvin sign (to
+  /// "k") and "İ" (to "i" + a combining dot), and neither needle contains a
+  /// "k" or an "i".
+  static func mightMentionMCP(_ line: Substring) -> Bool {
+    let bytes = line.utf8
+    for needle in mcpNeedles where containsCaseInsensitiveASCII(bytes, needle) {
+      return true
+    }
+    return false
+  }
+
+  private static func containsCaseInsensitiveASCII(
+    _ haystack: Substring.UTF8View, _ needle: [UInt8]
+  ) -> Bool {
+    guard let first = needle.first else { return true }
+    var start = haystack.startIndex
+    while start != haystack.endIndex {
+      // OR 0x20 folds ASCII A–Z onto a–z; needles are lowercase letters only.
+      if haystack[start] | 0x20 == first {
+        var h = start
+        var matched = true
+        for byte in needle {
+          guard h != haystack.endIndex, haystack[h] | 0x20 == byte else {
+            matched = false
+            break
+          }
+          h = haystack.index(after: h)
+        }
+        if matched { return true }
+      }
+      start = haystack.index(after: start)
+    }
+    return false
   }
 
   /// Text tools that routinely *mention* mcp in their arguments — a grep or

@@ -31,7 +31,7 @@ final class MonitorAssemblyTests: XCTestCase {
 
   private func probe(cmux: CmuxSnapshot? = nil) -> ProbeOutput {
     ProbeOutput(
-      tcp: lsof, udp: "", processTable: psTable, commandLines: psCommands, cmux: cmux)
+      sockets: lsof, processTable: psTable, commandLines: psCommands, cmux: cmux)
   }
 
   func testAssemblesEntriesFromRawOutput() {
