@@ -25,7 +25,7 @@ them.
   and deliberate constraints.
 - [Contributing](../CONTRIBUTING.md) — contribution workflow and pull request
   expectations.
-- [CodexBar design notes](codexbar-practices.md) — historical design research
+- [CodexBar design notes](research/codexbar-practices.md) — historical design research
   and decisions, not user documentation.
 
 ## Release readiness

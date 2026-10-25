@@ -288,7 +288,7 @@ final class MenuBarController: NSObject {
   // That solved the wrong problem. The bar hides because the display is running
   // a fullscreen space, where macOS reveals it only while the pointer is at the
   // top edge — and no ordinary window can hold it open; only a real NSMenu can,
-  // which Pier deliberately isn't (docs/codexbar-practices.md §11). So the bar
+  // which Pier deliberately isn't (docs/research/codexbar-practices.md §11). So the bar
   // was always going to hide, and chasing it turned a static ~30pt gap into the
   // panel *jumping* every time the pointer crossed the top edge. The motion is
   // what read as broken, not the gap.
@@ -473,7 +473,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   /// LSUIElement app and **drops its menu bar item** while the process keeps
   /// running — the icon just disappears. `.userInitiatedAllowingIdleSystemSleep`
   /// blocks App Nap plus automatic and sudden termination while still letting
-  /// the system idle-sleep. (See docs/codexbar-practices.md #6.)
+  /// the system idle-sleep. (See docs/research/codexbar-practices.md #6.)
   private var keepAliveActivity: NSObjectProtocol?
 
   func applicationWillTerminate(_ notification: Notification) {
