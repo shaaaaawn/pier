@@ -60,7 +60,7 @@ final class CmuxNotRunningTests: XCTestCase {
   /// Verbatim from the CLI with cmux closed (exit 1).
   private let closed = """
     Error: No live cmux socket found. Tried:
-      /Users/shawn/.local/state/cmux/cmux.sock
+      /Users/you/.local/state/cmux/cmux.sock
       /tmp/cmux.sock
     """
 
