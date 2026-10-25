@@ -133,6 +133,7 @@ final class ActivityTests: XCTestCase {
 
   // MARK: - Grouping & search
 
+  @MainActor
   func testActivityGroupsFilterAndOrder() {
     let activity = [
       ActivityEntry(kind: .mcp, name: "node · mcp-fs", detail: "cmd", pids: [1]),

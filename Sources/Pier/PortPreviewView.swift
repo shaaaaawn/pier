@@ -2,6 +2,7 @@ import SwiftUI
 import WebKit
 
 /// Owns the WKWebView and load state for one inline port preview.
+@MainActor
 final class PreviewController: NSObject, ObservableObject, WKNavigationDelegate {
   enum LoadState: Equatable {
     case idle
@@ -87,7 +88,7 @@ final class PreviewController: NSObject, ObservableObject, WKNavigationDelegate 
   /// HTTP client for an arbitrary host and break the no-network posture.
   func webView(
     _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
-    decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
   ) {
     guard let url = navigationAction.request.url else {
       decisionHandler(.cancel)

@@ -243,7 +243,7 @@ final class LogTailer: ObservableObject {
     // still let the dispatch block hold the tailer strongly for the whole run.
     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
       let result = ProcessRunner.run(toolPath, arguments, timeout: 8, environment: environment)
-      Task { @MainActor in
+      Task { @MainActor [weak self] in
         guard let self, self.source == source else { return }
         guard let result else {
           self.state = .ended("could not run the CLI")

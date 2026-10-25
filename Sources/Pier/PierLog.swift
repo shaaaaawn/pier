@@ -102,15 +102,15 @@ final class PierLog: @unchecked Sendable {
   /// ISO-8601 local time, so a line lines up with "what I did a minute ago"
   /// without timezone math.
   static func format(_ message: String, at date: Date) -> String {
-    "\(isoFormatter.string(from: date))  \(message)\n"
+    "\(date.formatted(isoStyle))  \(message)\n"
   }
 
-  private static let isoFormatter: ISO8601DateFormatter = {
-    let f = ISO8601DateFormatter()
-    f.formatOptions = [.withInternetDateTime]
-    f.timeZone = .current
-    return f
-  }()
+  /// A value-type style rather than a shared `ISO8601DateFormatter`: lines are
+  /// formatted on the log queue, and the formatter class isn't `Sendable`.
+  /// Same output as `[.withInternetDateTime]` in the local zone, offset
+  /// included (`2026-10-25T13:38:41-07:00`).
+  private static let isoStyle = Date.ISO8601FormatStyle(
+    timeZoneSeparator: .colon, timeZone: .current)
 
   /// Backstop against a secret reaching the file if a caller ever logs
   /// something argv-shaped. Masks `--flag=value` / `KEY=value` where the key

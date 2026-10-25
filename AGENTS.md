@@ -12,7 +12,8 @@ attributes each one to the agent harness / cmux session that spawned it, and
 manages the container engines and MCP servers running alongside them.
 
 Plain SPM executable (`swift build`), macOS 13+, no Xcode project, no third-party
-dependencies. UI is SwiftUI hosted in an AppKit panel.
+dependencies, Swift 6 language mode (full data-race checking). UI is SwiftUI
+hosted in an AppKit panel.
 
 ## Commands
 
@@ -180,6 +181,12 @@ Do not re-learn these. Each has a test locking it in.
     control and the chip labels wrap mid-word ("Co/nta/ine/rs"). Every other
     fixture renders at the 440pt default and hides this, so grade new header or
     chip-row controls with `--render-fixture-narrow`.
+18. **A "nearly matches optional requirement" warning means the method is dead.**
+    The Swift 6 move made WebKit's `decisionHandler` `@MainActor`; the old
+    signature still compiled, no longer satisfied the protocol, and so was never
+    exported under the selector WebKit calls. The preview's navigation policy
+    silently stopped running. Treat that warning as an error on any `@objc`
+    delegate. `testControllerExposesTheNavigationPolicyHook` pins this one.
 
 ## Sorting
 
@@ -230,6 +237,15 @@ Two unrelated kinds of "logs" live in this app; don't confuse them.
   in `.swift-format`. Comments explain
   **why**, especially where the code looks odd because reality is odd — those
   comments are load-bearing and shouldn't be "cleaned up".
+- **Concurrency (Swift 6).** Objects SwiftUI observes are `@MainActor`
+  (`PortMonitor`, `MemoryMonitor`, `PreviewController`, `LogTailer`). Off-main
+  work calls `nonisolated static` functions that take and return values, never
+  `self`, then hops back. Any closure that AppKit, Combine or a `Timer` calls
+  must either be `@Sendable` and hop to main, or be on main by construction
+  (`RunLoop.main` timers and `DispatchSource` handlers on `.main` wrap their
+  body in `MainActor.assumeIsolated`; sinks `receive(on: RunLoop.main)`). Under Swift 6 a main-actor closure called from
+  another thread **traps**, and in a menu bar app a trap looks like the icon
+  vanishing. `nonisolated(unsafe)` only with a comment proving the ordering.
 - Every external tool is optional. A missing CLI, a stopped daemon, or a refused
   socket must degrade to an empty section **and say why** — silence that looks
   identical to "nothing is running" is a bug, not graceful degradation. Say it

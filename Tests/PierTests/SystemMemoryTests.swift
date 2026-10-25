@@ -66,6 +66,7 @@ final class SystemMemoryTests: XCTestCase {
     XCTAssertEqual(MemoryPressure.critical.statusTint, .systemRed)
   }
 
+  @MainActor
   func testFixedMonitorReportsItsFixturePressure() {
     let fixed = MemorySnapshot(
       total: gb(32), app: gb(1), wired: gb(1), compressed: gb(1), cached: 0,
@@ -75,6 +76,7 @@ final class SystemMemoryTests: XCTestCase {
 
   /// Repeating the same level must not republish — the menu bar would redraw
   /// on every 2 s sample otherwise.
+  @MainActor
   func testPressureRepublishesOnlyOnChange() {
     let fixed = MemorySnapshot(
       total: gb(32), app: gb(1), wired: gb(1), compressed: gb(1), cached: 0,
@@ -171,6 +173,7 @@ final class SystemMemoryTests: XCTestCase {
   }
 
   /// Fixture monitors never sample, so renders stay reproducible.
+  @MainActor
   func testFixedMonitorNeverSamples() {
     let fixed = MemorySnapshot(
       total: gb(32), app: gb(1), wired: gb(1), compressed: gb(1), cached: 0,
@@ -182,6 +185,7 @@ final class SystemMemoryTests: XCTestCase {
   }
 
   /// The live path end to end: one real sample produces plausible numbers.
+  @MainActor
   func testLiveSampleIsPlausible() throws {
     let monitor = MemoryMonitor()
     monitor.sample()

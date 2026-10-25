@@ -2,6 +2,11 @@ import Combine
 import Foundation
 
 /// Polls lsof/ps/cmux on a background queue and publishes attributed port entries.
+///
+/// Main-actor: its state is `@Published` to SwiftUI and every mutation already
+/// hopped to the main queue. The probes run off-main through `nonisolated`
+/// statics that take and return values, never `self`.
+@MainActor
 final class PortMonitor: ObservableObject {
   @Published private(set) var entries: [PortEntry] = []
   @Published private(set) var activity: [ActivityEntry] = []
@@ -96,7 +101,8 @@ final class PortMonitor: ObservableObject {
     timer?.invalidate()
     let interval: TimeInterval = windowVisible ? 5 : 30
     let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
-      self?.refresh()
+      // Scheduled on RunLoop.main below, so this block always fires on main.
+      MainActor.assumeIsolated { self?.refresh() }
     }
     timer.tolerance = interval * 0.2
     RunLoop.main.add(timer, forMode: .common)
@@ -198,7 +204,7 @@ final class PortMonitor: ObservableObject {
 
   // MARK: - cmux discovery
 
-  static func resolveCmux() -> String? {
+  nonisolated static func resolveCmux() -> String? {
     resolveBinary(
       "cmux",
       candidates: [
@@ -210,7 +216,7 @@ final class PortMonitor: ObservableObject {
 
   /// Well-known install paths first, then `which` (menu-bar apps don't
   /// inherit a shell PATH).
-  static func resolveBinary(_ name: String, candidates: [String]) -> String? {
+  nonisolated static func resolveBinary(_ name: String, candidates: [String]) -> String? {
     for path in candidates where FileManager.default.isExecutableFile(atPath: path) {
       return path
     }

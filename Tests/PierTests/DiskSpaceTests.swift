@@ -40,6 +40,7 @@ final class DiskSpaceTests: XCTestCase {
     XCTAssertLessThanOrEqual(d.free, d.total)
   }
 
+  @MainActor
   func testFixedMonitorCarriesItsDisk() {
     let disk = DiskSnapshot(free: 1, total: 2, availableIncludingPurgeable: nil)
     let mem = MemorySnapshot(

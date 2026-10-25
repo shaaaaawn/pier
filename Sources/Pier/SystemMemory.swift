@@ -22,7 +22,23 @@ import SwiftUI
 //   what it means.
 // - **Kernel pages.** The counts are in `vm_kernel_page_size`, which only
 //   differs from `vm_page_size` under Rosetta — exactly when using the wrong one
-//   would quietly scale every number by 4×.
+//   would quietly scale every number by 4×. Read through `KernelPage.size`:
+//   Swift 6 treats the C global itself as shared mutable state.
+
+/// The unit `host_statistics64` counts in. `host_page_size` returns
+/// `vm_kernel_page_size` — measured 16 KB both native and under Rosetta, where
+/// `vm_page_size` and `getpagesize()` drop to 4 KB — through a call, so Swift 6
+/// doesn't have to treat a C global as shared mutable state.
+enum KernelPage {
+  static let size: UInt64 = {
+    // Released here: each mach_host_self() adds a send-right (see above).
+    let host = mach_host_self()
+    defer { mach_port_deallocate(mach_task_self_, host) }
+    var size: vm_size_t = 0
+    guard host_page_size(host, &size) == KERN_SUCCESS, size > 0 else { return 16_384 }
+    return UInt64(size)
+  }()
+}
 
 /// Activity Monitor's green / yellow / red. Driven by the kernel's own verdict
 /// (`kern.memorystatus_vm_pressure_level`), **not** by percent used: Apple's
@@ -186,6 +202,7 @@ enum MemoryFormat {
 /// Deliberately its own object rather than more state on `PortMonitor`: only
 /// `MemoryGlanceView` observes it, so a tick redraws one footer view instead of
 /// recomputing the whole panel's grouping and rows.
+@MainActor
 final class MemoryMonitor: ObservableObject {
   @Published private(set) var snapshot: MemorySnapshot?
   /// Separate from `snapshot` so the menu bar item observes only this: a RAM
@@ -209,7 +226,8 @@ final class MemoryMonitor: ObservableObject {
   /// Kernel push notifications for pressure transitions — no polling. This is
   /// the one consumer that needs pressure while the panel is closed (the menu
   /// bar tint), which is why it exists at all.
-  private var pressureSource: DispatchSourceMemoryPressure?
+  /// A `let`, set once, so the nonisolated deinit may cancel it.
+  private let pressureSource: DispatchSourceMemoryPressure?
 
   init() {
     host = mach_host_self()
@@ -218,11 +236,15 @@ final class MemoryMonitor: ObservableObject {
     pressure = Self.readPressure()
     let source = DispatchSource.makeMemoryPressureSource(
       eventMask: [.normal, .warning, .critical], queue: .main)
+    // Stored before the handler captures self: every property must be set first.
+    pressureSource = source
     // Re-read the level rather than trusting the event's flags: the sysctl is
     // the same value the panel's own sampling uses, so the two can't disagree.
-    source.setEventHandler { [weak self] in self?.updatePressure(Self.readPressure()) }
+    // The source delivers on the main queue, so asserting isolation is safe.
+    source.setEventHandler { [weak self] in
+      MainActor.assumeIsolated { self?.updatePressure(Self.readPressure()) }
+    }
     source.activate()
-    pressureSource = source
   }
 
   /// Fixture renders: a fixed value, never sampled, so PNGs stay reproducible.
@@ -232,11 +254,14 @@ final class MemoryMonitor: ObservableObject {
     snapshot = fixed
     pressure = fixed.pressure
     self.disk = disk
+    pressureSource = nil
   }
 
+  /// The timer can't be invalidated here: deinit is nonisolated and `timer` is
+  /// main-actor state. Its block holds `self` weakly and invalidates itself on
+  /// the first tick after we're gone.
   deinit {
     pressureSource?.cancel()
-    timer?.invalidate()
     mach_port_deallocate(mach_task_self_, host)
   }
 
@@ -252,8 +277,10 @@ final class MemoryMonitor: ObservableObject {
     baseline = nil
     lastDiskRead = nil
     sample()
-    let timer = Timer(timeInterval: Self.interval, repeats: true) { [weak self] _ in
-      self?.sample()
+    let timer = Timer(timeInterval: Self.interval, repeats: true) { [weak self] timer in
+      guard let self else { return timer.invalidate() }
+      // Scheduled on RunLoop.main below, so this block always fires on main.
+      MainActor.assumeIsolated { self.sample() }
     }
     timer.tolerance = Self.interval * 0.25
     RunLoop.main.add(timer, forMode: .common)
@@ -276,7 +303,7 @@ final class MemoryMonitor: ObservableObject {
     sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &levelSize, nil, 0)
 
     let next = MemoryMath.snapshot(
-      counters: counters, pageSize: UInt64(vm_kernel_page_size),
+      counters: counters, pageSize: KernelPage.size,
       total: ProcessInfo.processInfo.physicalMemory,
       swapUsed: swap.xsu_used, swapTotal: swap.xsu_total,
       pressureLevel: level, swapoutsPerSecond: rate)
