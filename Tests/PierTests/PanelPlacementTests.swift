@@ -181,4 +181,14 @@ final class MenuBarVisibilityTests: XCTestCase {
     XCTAssertEqual(retracted.maxY - shown.maxY, 22, accuracy: 0.5, "moves up by the bar")
     XCTAssertEqual(retracted.minX, shown.minX, "horizontal anchor unaffected")
   }
+
+  /// Opened with no usable button (hidden by a crowded bar, or reopened from
+  /// Spotlight): top-right of the usable area, never the bottom-left corner.
+  func testUnanchoredPanelHangsTopRight() {
+    let visible = NSRect(x: 0, y: 0, width: 1800, height: 1130)
+    let frame = PanelPlacement.unanchored(
+      visibleFrame: visible, size: NSSize(width: 440, height: 560))
+    XCTAssertEqual(frame.maxX, visible.maxX - PanelPlacement.screenMargin)
+    XCTAssertEqual(frame.maxY, visible.maxY - PanelPlacement.gap)
+  }
 }

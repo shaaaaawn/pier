@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// Makes fixture renders hermetic, and stops them vandalising your app.
 ///
@@ -37,6 +37,7 @@ enum FixtureDefaults {
   /// render wants a particular one.
   static func apply(scope: String? = nil, defaults: UserDefaults = .standard) {
     save(defaults)
+    NSApp?.appearance = appearance()
 
     defaults.set(scope ?? PierFilter.all.rawValue, forKey: "listFilter")
     // Activity ordering depends on live CPU history; fixtures have a fixed
@@ -47,6 +48,16 @@ enum FixtureDefaults {
     defaults.set(PreviewViewport.desktop.rawValue, forKey: "previewViewport")
     defaults.set(Double(PanelSize.defaultWidth), forKey: PanelSize.widthKey)
     defaults.set(Double(PanelSize.defaultHeight), forKey: PanelSize.heightKey)
+  }
+
+  /// `--appearance light|dark` (default dark). Pinned like every other input:
+  /// left to the system setting, a render taken in light mode would differ
+  /// from one taken in dark, and light mode would never get looked at.
+  static func appearance(_ args: [String] = CommandLine.arguments) -> NSAppearance? {
+    let value = args.firstIndex(of: "--appearance").flatMap { i in
+      i + 1 < args.count ? args[i + 1] : nil
+    }
+    return NSAppearance(named: value == "light" ? .aqua : .darkAqua)
   }
 
   /// Put back exactly what was there — including *absence*, so a key the user

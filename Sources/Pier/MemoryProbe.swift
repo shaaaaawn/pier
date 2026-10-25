@@ -19,7 +19,8 @@ enum MemoryProbe {
     print("glance:  \(MemoryFormat.glance(s))")
     print(MemoryFormat.tooltip(s).split(separator: "\n").map { "  \($0)" }.joined(separator: "\n"))
     print("page size: \(KernelPage.size) bytes (vm_stat reports the same unit)")
-    print("menu bar tint: \(monitor.pressure.tintName) (\(monitor.pressure.label) pressure)")
+    print(
+      "menu bar count colour: \(monitor.pressure.tintName) (\(monitor.pressure.label) pressure)")
     if let disk = DiskSpace.read() {
       print("disk:    \(DiskSpace.format(disk.free)) free")
       print(

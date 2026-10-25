@@ -45,6 +45,17 @@ enum PanelPlacement {
     }
     return NSRect(x: x.rounded(), y: y.rounded(), width: size.width, height: size.height)
   }
+
+  /// No usable button rect: hang from the top-right of the usable area.
+  static func unanchored(
+    visibleFrame: NSRect?, size: NSSize, gap: CGFloat = gap, margin: CGFloat = screenMargin
+  ) -> NSRect {
+    guard let visible = visibleFrame else { return NSRect(origin: .zero, size: size) }
+    return NSRect(
+      x: (visible.maxX - size.width - margin).rounded(),
+      y: (visible.maxY - size.height - gap).rounded(),
+      width: size.width, height: size.height)
+  }
 }
 
 /// Owns the menu bar presence: an `NSStatusItem` plus a panel positioned
@@ -226,13 +237,13 @@ final class MenuBarController: NSObject {
   /// monochrome: the icon is a template image that inverts with the menu bar,
   /// and a colored dot beside it would be the one thing that doesn't.
   ///
-  /// The single exception is memory pressure: at Warning or Critical the whole
-  /// item takes Activity Monitor's yellow or red. That colour has to mean
-  /// something, so it appears only when the kernel says so, never for "lots of
-  /// RAM used" (which is normal on macOS).
+  /// The single exception is memory pressure: at Warning or Critical the count
+  /// turns orange or red (see `StatusTitle` for why only the count). That
+  /// colour has to mean something, so it appears only when the kernel says so,
+  /// never for "lots of RAM used" (which is normal on macOS).
   private func updateTitle(_ count: Int, unseen: Int) {
-    statusItem.button?.title = unseen > 0 ? " \(count) •" : " \(count)"
-    statusItem.button?.contentTintColor = memoryPressure.statusTint
+    statusItem.button?.attributedTitle = StatusTitle.make(
+      count: count, unseen: unseen, pressure: memoryPressure)
     var tip =
       unseen > 0
       ? "Pier — \(unseen) new event\(unseen == 1 ? "" : "s")"
@@ -270,8 +281,12 @@ final class MenuBarController: NSObject {
   /// Panel frame left-aligned under the button, clamped into that button's screen.
   func anchoredFrame() -> NSRect {
     let size = PanelSize.current
-    guard let button = buttonScreenRect() else {
-      return NSRect(origin: .zero, size: size)
+    // No button to hang from: top-right of the main screen, where the item
+    // would be, rather than the bottom-left corner a zero origin meant.
+    guard let button = buttonScreenRect(),
+      NSScreen.screens.contains(where: { $0.frame.intersects(button) })
+    else {
+      return PanelPlacement.unanchored(visibleFrame: NSScreen.main?.visibleFrame, size: size)
     }
     let screen = buttonScreen()
     return PanelPlacement.frame(
@@ -283,6 +298,10 @@ final class MenuBarController: NSObject {
 
   @objc private func togglePanel() {
     panel.isVisible ? closePanel() : showPanel()
+  }
+
+  func showPanelIfHidden() {
+    if !panel.isVisible { showPanel() }
   }
 
   func showPanel() {
@@ -523,6 +542,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     if !repaired.isEmpty {
       PierLog.shared.log("status item defaults repaired: \(repaired.joined(separator: ", "))")
     }
+    if StatusItemRepair.seedPositionIfUnset() {
+      PierLog.shared.log("status item placed beside the system items (no saved position)")
+    }
 
     let controller = MenuBarController()
     menuBar = controller
@@ -574,5 +596,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
     true
+  }
+
+  /// Opening Pier again — Spotlight, Finder, `open` — shows the panel. It's
+  /// the way in when the menu bar icon can't be clicked: hidden by a crowded
+  /// bar, behind the notch, or in a fullscreen space.
+  func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool
+  {
+    PierLog.shared.log("reopened — showing the panel")
+    menuBar?.showPanelIfHidden()
+    return false
   }
 }

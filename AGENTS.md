@@ -44,6 +44,8 @@ found:
 | `--print-memory` | RAM / swap glance, pressure + menu bar tint, disk free — live, then fixtures |
 | `--render-fixture-simulators <dir>` | the Simulators section at 340 and 440 pt, no device needed |
 | `--render-fixture-terminals <dir>` | Ghostty / Terminal tab groups at 340 and 440 pt |
+| `--render-fixture-statusitem <dir>` | the menu bar item in light and dark mode, each pressure level |
+| `--appearance light\|dark` | add to any `--render-fixture*`; renders are pinned to dark otherwise |
 | `--print-docker` / `--print-apple` | engine state + reclaimable space (read-only, never prunes) |
 | `--print-cmux` | whether workspace grouping can work, and why not |
 | `--probe-anchor` | where the panel landed vs its menu bar icon |
