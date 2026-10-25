@@ -7,7 +7,7 @@ dependencies.
 ## Toolchain
 
 - macOS 13 or later
-- Xcode 16 or later
+- Xcode 26 or later
 - Xcode Command Line Tools selected with `xcode-select`
 
 Check the environment:

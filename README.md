@@ -52,7 +52,7 @@ collapse state, panel size, and preview width persist between launches.
 ### Requirements
 
 - macOS 13 or later
-- Xcode 16 or later, including the Command Line Tools
+- Xcode 26 or later, including the Command Line Tools
 - Optional: Docker Desktop, Apple
   [`container`](https://github.com/apple/container), cmux, and Xcode's
   simulators
