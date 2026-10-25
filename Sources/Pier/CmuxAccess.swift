@@ -9,6 +9,9 @@ import Foundation
 /// by workspace and nothing said why.
 enum CmuxStatus: Equatable {
   case notInstalled
+  /// Installed but not open — no socket to talk to. Silent, like
+  /// `notInstalled`: there's nothing to group, and nothing for the user to fix.
+  case notRunning
   /// cmux is there but its socket is in `cmuxOnly` mode (or the password is wrong).
   case accessDenied
   case failed(String)
@@ -17,7 +20,7 @@ enum CmuxStatus: Equatable {
   /// One-line explanation for the panel, nil when there's nothing to say.
   var hint: String? {
     switch self {
-    case .notInstalled, .connected: return nil
+    case .notInstalled, .notRunning, .connected: return nil
     case .accessDenied:
       return CmuxAccess.deniedHint(configuredMode: CmuxAccess.configuredMode())
     case .failed(let why): return "cmux unavailable — \(why)"
@@ -29,7 +32,7 @@ enum CmuxStatus: Equatable {
     case .accessDenied:
       return CmuxAccess.deniedDetail(configuredMode: CmuxAccess.configuredMode())
     case .failed(let why): return why
-    case .notInstalled, .connected: return nil
+    case .notInstalled, .notRunning, .connected: return nil
     }
   }
 }
@@ -176,11 +179,22 @@ enum CmuxAccess {
   }
 
   /// Classify one `cmux top` invocation.
+  /// The CLI's own words when no cmux instance is listening (verbatim:
+  /// "Error: No live cmux socket found. Tried: …", exit 1).
+  static func isNotRunning(_ output: String) -> Bool {
+    output.localizedCaseInsensitiveContains("no live cmux socket")
+  }
+
   static func status(from result: ProcessRunner.Result?, snapshotWorkspaces: () -> Int)
     -> CmuxStatus
   {
     guard let result else { return .failed("could not launch the cmux CLI") }
     if isAccessDenied(result.combined) { return .accessDenied }
+    // cmux simply isn't open. Showing "cmux unavailable — Error: No live cmux
+    // socket found" for that was noise: grouping by workspace is a bonus, and
+    // its absence is not something to fix. Denied access still warns, because
+    // then cmux *is* running and the user can open the socket.
+    if isNotRunning(result.combined) { return .notRunning }
     guard result.exitCode == 0 else {
       let message = result.combined.trimmingCharacters(in: .whitespacesAndNewlines)
       return .failed(message.isEmpty ? "exited \(result.exitCode)" : String(message.prefix(120)))

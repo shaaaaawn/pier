@@ -53,3 +53,28 @@ final class CmuxSnapshotTests: XCTestCase {
     XCTAssertNil(snapshot.attribution(chain: [1]))
   }
 }
+
+/// cmux being closed is not a problem to report. Only a refused socket is
+/// actionable, so only that keeps its banner.
+final class CmuxNotRunningTests: XCTestCase {
+  /// Verbatim from the CLI with cmux closed (exit 1).
+  private let closed = """
+    Error: No live cmux socket found. Tried:
+      /Users/shawn/.local/state/cmux/cmux.sock
+      /tmp/cmux.sock
+    """
+
+  func testClosedCmuxIsSilent() {
+    let result = ProcessRunner.Result(stdout: "", stderr: closed, exitCode: 1, timedOut: false)
+    let status = CmuxAccess.status(from: result) { 0 }
+    XCTAssertEqual(status, .notRunning)
+    XCTAssertNil(status.hint, "a closed cmux must not put a banner in the panel")
+  }
+
+  func testOtherFailuresStillExplainThemselves() {
+    let result = ProcessRunner.Result(
+      stdout: "", stderr: "Error: something else broke", exitCode: 1, timedOut: false)
+    let status = CmuxAccess.status(from: result) { 0 }
+    XCTAssertNotNil(status.hint)
+  }
+}
