@@ -123,7 +123,8 @@ extension PortMonitor {
   /// Start a stopped container (`docker start` / `container start`).
   func start(_ entry: ActivityEntry) {
     let path = entry.kind == .docker ? dockerPath : containerPath
-    guard let path, entry.kind != .mcp else { return }
+    // Only booted simulators are listed, so there is never one to start.
+    guard let path, entry.kind == .docker || entry.kind == .apple else { return }
     PierLog.shared.log("start \(entry.kind.rawValue) container \(entry.name)")
     expect(.started, subject: .container(entry.kind, entry.name))
     run(tool: path, arguments: ["start", entry.name], timeout: 60) { ok, message in
@@ -133,7 +134,7 @@ extension PortMonitor {
   }
 
   /// Stop an activity row: SIGTERM every pid for MCP rows, `docker stop` /
-  /// `container stop` for container rows.
+  /// `container stop` for container rows, `simctl shutdown` for simulators.
   func stop(_ entry: ActivityEntry) {
     switch entry.kind {
     case .mcp:
@@ -158,6 +159,36 @@ extension PortMonitor {
           "stop \(entry.name): exit \(result?.exitCode.description ?? "timeout")")
         DispatchQueue.main.async { self?.refresh() }
       }
+    case .simulator:
+      guard let ref = entry.simulator else { return }
+      PierLog.shared.log("shut down simulator \(entry.name)")
+      expect(.stopped, subject: .container(.simulator, entry.name))
+      runSimctl(SimulatorParser.shutdownArguments(ref), label: entry.name)
+    }
+  }
+
+  /// Shut down every booted simulator Pier lists. One `shutdown all` per
+  /// device set, so XCTest clones go too — they hold just as much memory.
+  func shutDownAllSimulators() {
+    let booted = activity.filter { $0.kind == .simulator && $0.simulator != nil }
+    for entry in booted {
+      expect(.stopped, subject: .container(.simulator, entry.name))
+    }
+    let sets = Set(booted.compactMap { $0.simulator?.deviceSet })
+    PierLog.shared.log("shut down all simulators (\(booted.count) booted)")
+    for set in sets.sorted() {
+      runSimctl(SimulatorParser.shutdownAllArguments(deviceSet: set), label: "all")
+    }
+  }
+
+  /// `xcrun simctl …` off the main thread. Shutdown waits for the device to
+  /// finish stopping, which takes a few seconds, hence the generous timeout.
+  private func runSimctl(_ arguments: [String], label: String) {
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+      let result = ProcessRunner.run("/usr/bin/xcrun", arguments, timeout: 60)
+      PierLog.shared.log(
+        "simctl shutdown \(label): exit \(result?.exitCode.description ?? "timeout")")
+      DispatchQueue.main.async { self?.refresh() }
     }
   }
 

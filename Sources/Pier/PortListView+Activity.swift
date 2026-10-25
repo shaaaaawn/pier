@@ -57,6 +57,11 @@ extension PortListView {
           .padding(.trailing, 12)
           .padding(.top, 5)
       }
+      if group.kind == .simulator, !group.entries.isEmpty {
+        simulatorMenu(count: group.entries.count)
+          .padding(.trailing, 12)
+          .padding(.top, 5)
+      }
     }
   }
 
@@ -91,7 +96,7 @@ extension PortListView {
     switch kind {
     case .docker: return monitor.dockerState
     case .apple: return monitor.appleState
-    case .mcp: return nil
+    case .mcp, .simulator: return nil
     }
   }
 
@@ -213,7 +218,10 @@ extension PortListView {
           Image(systemName: "xmark.circle")
             .foregroundStyle(visible ? Color.red : Color.secondary)
         }
-        .help(entry.kind == .mcp ? "Kill process" : "Stop container")
+        .help(
+          entry.kind == .mcp
+            ? "Kill process"
+            : entry.kind == .simulator ? "Shut down simulator" : "Stop container")
       } else {
         // A stopped container's useful action is the opposite one.
         Button {

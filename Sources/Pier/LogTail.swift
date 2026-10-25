@@ -75,6 +75,8 @@ enum LogSource: Equatable {
     case .mcp:
       return .unavailable(
         reason: "MCP servers talk over stdio to their harness — no log to read")
+    case .simulator:
+      return .unavailable(reason: "simulator logs live in Console.app, under the device")
     }
   }
 

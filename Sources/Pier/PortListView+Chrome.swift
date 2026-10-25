@@ -203,6 +203,22 @@ extension PortListView {
     .help("Apple container services and cleanup")
   }
 
+  func simulatorMenu(count: Int) -> some View {
+    Menu {
+      Button("Shut Down All…", role: .destructive) {
+        pending = .shutDownSimulators(count: count)
+      }
+    } label: {
+      Image(systemName: "ellipsis.circle")
+        .font(.system(size: 10))
+        .foregroundStyle(.secondary)
+    }
+    .menuStyle(.borderlessButton)
+    .menuIndicator(.hidden)
+    .fixedSize()
+    .help("Simulator actions")
+  }
+
   func requestApple(_ action: AppleAction) {
     if action.needsConfirmation {
       pending = .apple(action, reclaimable: monitor.appleReclaimable)

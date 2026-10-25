@@ -139,10 +139,21 @@ struct PortListView: View {
         )
       case .stop(let entry):
         return Alert(
-          title: Text(entry.kind == .mcp ? "Kill \(entry.name)?" : "Stop \(entry.name)?"),
+          title: Text("\(entry.kind.stopVerb) \(entry.name)?"),
           message: Text(stopMessage(entry)),
-          primaryButton: .destructive(Text(entry.kind == .mcp ? "Kill" : "Stop")) {
+          primaryButton: .destructive(Text(entry.kind.stopVerb)) {
             monitor.stop(entry)
+          },
+          secondaryButton: .cancel()
+        )
+      case .shutDownSimulators(let count):
+        return Alert(
+          title: Text(count == 1 ? "Shut down the simulator?" : "Shut down \(count) simulators?"),
+          message: Text(
+            "Runs xcrun simctl shutdown all. Apps running on them quit; the devices "
+              + "and their data stay."),
+          primaryButton: .destructive(Text("Shut Down All")) {
+            monitor.shutDownAllSimulators()
           },
           secondaryButton: .cancel()
         )
@@ -168,6 +179,9 @@ struct PortListView: View {
         : "Send SIGTERM to pid \(entry.pids.first.map(String.init) ?? "?")."
     case .docker: return "Run docker stop \(entry.name)."
     case .apple: return "Run container stop \(entry.name)."
+    case .simulator:
+      return "Run xcrun simctl shutdown for this \(entry.detail) device. Its apps quit; "
+        + "the device and its data stay."
     }
   }
 
@@ -302,6 +316,7 @@ enum PendingConfirmation: Identifiable {
   case stop(ActivityEntry)
   case docker(DockerAction, reclaimable: String?)
   case apple(AppleAction, reclaimable: String?)
+  case shutDownSimulators(count: Int)
 
   var id: String {
     switch self {
@@ -310,6 +325,7 @@ enum PendingConfirmation: Identifiable {
     case .stop(let entry): return "stop-\(entry.id)"
     case .docker(let action, _): return "docker-\(action.rawValue)"
     case .apple(let action, _): return "apple-\(action.rawValue)"
+    case .shutDownSimulators: return "simulators-shutdown-all"
     }
   }
 }
