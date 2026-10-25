@@ -154,4 +154,23 @@ final class StatusItemRepairTests: XCTestCase {
       snapshot.description,
       "visible=true,button=true,window=false,screen=false,width=18.0")
   }
+
+  // MARK: - First placement
+
+  /// A crowded bar hides the leftmost status items, which is where macOS puts
+  /// a new one — so an unplaced Pier starts beside the system items.
+  func testSeedsAPositionOnlyWhenNoneIsSaved() {
+    let defaults = freshDefaults()
+    let key = StatusItemRepair.positionKey(itemName)
+    XCTAssertTrue(StatusItemRepair.seedPositionIfUnset(defaults, autosaveName: itemName))
+    XCTAssertEqual(defaults.double(forKey: key), StatusItemRepair.seededPosition)
+    XCTAssertFalse(
+      StatusItemRepair.shouldClearPosition(defaults.object(forKey: key), maxScreenX: 1800),
+      "the seed must survive the corrupt-position sweep")
+
+    // A ⌘-drag writes the key; the user's choice is never replaced.
+    defaults.set(912.0, forKey: key)
+    XCTAssertFalse(StatusItemRepair.seedPositionIfUnset(defaults, autosaveName: itemName))
+    XCTAssertEqual(defaults.double(forKey: key), 912)
+  }
 }

@@ -62,15 +62,29 @@ enum MemoryPressure: Int, Equatable {
     }
   }
 
-  /// The menu bar icon's tint. **nil at normal**, so the template image keeps
-  /// inverting with the menu bar the way every other item does; colour appears
-  /// only when the kernel says memory is under pressure. Same yellow/red as
-  /// Activity Monitor and the footer glance, so the two never disagree.
+  /// Colour of the menu bar item's port count. **nil at normal**, so it keeps
+  /// the menu bar's own text colour like every other item; colour appears only
+  /// when the kernel says memory is under pressure.
+  ///
+  /// Each resolves per appearance, measured for at least 3:1 contrast against
+  /// both menu bars: the system orange is only 1.9:1 on a light bar (and
+  /// Activity Monitor's yellow worse), so light mode gets darker shades.
   var statusTint: NSColor? {
     switch self {
     case .normal: return nil
-    case .warning: return .systemYellow
-    case .critical: return .systemRed
+    case .warning:
+      return Self.adaptive(
+        light: NSColor(srgbRed: 0.70, green: 0.36, blue: 0, alpha: 1), dark: .systemOrange)
+    case .critical:
+      return Self.adaptive(
+        light: NSColor(srgbRed: 0.784, green: 0.098, blue: 0.118, alpha: 1), dark: .systemRed)
+    }
+  }
+
+  /// A colour that picks `light` or `dark` from the appearance it's drawn in.
+  static func adaptive(light: NSColor, dark: NSColor) -> NSColor {
+    NSColor(name: nil) { appearance in
+      appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
     }
   }
 
@@ -78,17 +92,15 @@ enum MemoryPressure: Int, Equatable {
   var tintName: String {
     switch self {
     case .normal: return "none"
-    case .warning: return "yellow"
+    case .warning: return "orange"
     case .critical: return "red"
     }
   }
 
+  /// The footer glance's bar: the same adaptive colours as the menu bar
+  /// count, so the two never disagree and both read in light and dark mode.
   var tint: Color {
-    switch self {
-    case .normal: return .green
-    case .warning: return .yellow
-    case .critical: return .red
-    }
+    statusTint.map { Color(nsColor: $0) } ?? .green
   }
 }
 

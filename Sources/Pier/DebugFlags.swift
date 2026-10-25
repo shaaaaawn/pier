@@ -15,6 +15,9 @@ enum DebugFlags {
       MemoryProbe.printMemory()
       exit(0)
     }
+    if let dir = value(after: "--render-fixture-statusitem", in: args) {
+      MainActor.assumeIsolated { StatusItemFixture.render(to: dir) }
+    }
     if let dir = value(after: "--render-fixture-terminals", in: args) {
       MainActor.assumeIsolated { TerminalFixture.render(to: dir) }
     }

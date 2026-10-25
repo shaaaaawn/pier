@@ -146,6 +146,34 @@ enum StatusItemRepair {
     return cleared
   }
 
+  // MARK: - 4. First placement
+
+  /// Where a brand-new item goes: just left of the system items (Wi-Fi,
+  /// Control Center, the clock). Measured in macOS's own units — roughly
+  /// points in from the right end of the bar.
+  ///
+  /// Without a saved position macOS puts a new item at the **far left** of the
+  /// status area, the first slot it hides when the frontmost app's menus need
+  /// the room — and on a notched display, often behind the notch. A machine
+  /// with a busy menu bar then runs Pier with no icon to click, and a hidden
+  /// icon can't be ⌘-dragged somewhere better. Seen on a MacBook with 28 items:
+  /// unseeded, Pier sat at x≈540 of 1800 and was never drawn.
+  static let seededPosition: Double = 250
+
+  /// Seed a position only when none is saved. A user's ⌘-drag writes this
+  /// key, so a deliberate placement is never overridden; a corrupt one cleared
+  /// by `repairDefaults` gets the seed instead of the far-left default.
+  /// Must run before the status item is constructed. Returns whether it wrote.
+  @discardableResult
+  static func seedPositionIfUnset(
+    _ defaults: UserDefaults = .standard, autosaveName: String = StatusItemRepair.autosaveName
+  ) -> Bool {
+    let key = positionKey(autosaveName)
+    guard defaults.object(forKey: key) == nil else { return false }
+    defaults.set(seededPosition, forKey: key)
+    return true
+  }
+
   private static func legacyNames(in defaults: UserDefaults) -> [String] {
     defaults.dictionaryRepresentation().keys
       .filter { $0.hasPrefix(positionPrefix) }
