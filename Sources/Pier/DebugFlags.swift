@@ -408,9 +408,9 @@ enum DebugFlags {
         print(event.selfInitiated ? "PASS — reads as you" : "FAIL — looks unattributed")
         exit(event.selfInitiated ? 0 : 1)
       }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: poll)
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1) { poll() }
     }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: poll)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { poll() }
     DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
       server.terminate()
       print("TIMEOUT — no stop event in 60s")
