@@ -10,17 +10,37 @@ struct LsofRecord: Equatable {
   let port: Int
 }
 
-/// Parser for `lsof -nP -iTCP -sTCP:LISTEN` and `lsof -nP -iUDP` output.
+/// Parser for lsof's socket listing. Pier runs **one** call for both protocols,
+/// `lsof +c 0 -nP -iTCP -sTCP:LISTEN -iUDP`, so each row's protocol is read
+/// from the row itself rather than assumed from which call produced it.
+///
+/// One call instead of two halves lsof's cost: every invocation walks every
+/// process's file table, and the two calls cost ~61 ms + ~59 ms of CPU against
+/// ~64 ms for the combined one (measured; an identical 52-row set).
+/// `-sTCP:LISTEN` still only filters TCP — lsof applies a protocol-prefixed
+/// state filter to that protocol alone.
 enum LsofParser {
+  static func parse(_ output: String) -> [LsofRecord] {
+    output.split(separator: "\n").compactMap { parseLine(String($0)) }
+  }
+
+  /// For single-protocol captures (older fixtures). The row's own NODE column
+  /// still wins when present; `proto` only fills in when it's missing.
   static func parse(_ output: String, proto: PortProtocol) -> [LsofRecord] {
     output.split(separator: "\n").compactMap { parseLine(String($0), proto: proto) }
   }
 
   /// Columns: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME (state)
-  static func parseLine(_ line: String, proto: PortProtocol) -> LsofRecord? {
+  static func parseLine(_ line: String, proto fallback: PortProtocol? = nil) -> LsofRecord? {
     if line.hasPrefix("COMMAND") { return nil }
     let tokens = line.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
     guard tokens.count >= 9, let pid = Int32(tokens[1]) else { return nil }
+    // NODE holds the protocol for inet sockets. Searching from TYPE onward
+    // skips COMMAND/PID/USER/FD, and the NAME column never spells "TCP"/"UDP".
+    guard
+      let proto = tokens.dropFirst(4).lazy.compactMap(PortProtocol.init(rawValue:)).first
+        ?? fallback
+    else { return nil }
     // The NAME column is the first token at index >= 8 that parses as addr:port.
     for i in 8..<tokens.count {
       let token = tokens[i]

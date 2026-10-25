@@ -39,7 +39,7 @@ final class LsofParserTests: XCTestCase {
   }
 
   func testDuplicatePidRowsMerge() {
-    let entries = PortMonitor.buildEntries(tcp: tcpFixture, udp: "")
+    let entries = PortMonitor.buildEntries(sockets: tcpFixture)
     XCTAssertEqual(entries.count, 4)  // 5 rows, node:3000 appears twice
     let node = entries.first { $0.port == 3000 }
     XCTAssertEqual(node?.pid, 90220)

@@ -14,10 +14,15 @@ import Foundation
 extension PortMonitor {
   /// Merge lsof records into entries, deduped by pid+port+protocol with
   /// distinct bind addresses collected.
-  static func buildEntries(tcp: String, udp: String) -> [PortEntry] {
+  ///
+  /// `sockets` is the combined `-iTCP -sTCP:LISTEN -iUDP` output, so TCP and UDP
+  /// rows arrive interleaved. Entry order is therefore not meaningful — every
+  /// grouping and sort downstream is a total order, which is what keeps the
+  /// panel stable regardless.
+  static func buildEntries(sockets: String) -> [PortEntry] {
     var order: [String] = []
     var byKey: [String: PortEntry] = [:]
-    let records = LsofParser.parse(tcp, proto: .tcp) + LsofParser.parse(udp, proto: .udp)
+    let records = LsofParser.parse(sockets)
     for record in records {
       let key = "\(record.pid):\(record.port):\(record.proto.rawValue)"
       if var entry = byKey[key] {
