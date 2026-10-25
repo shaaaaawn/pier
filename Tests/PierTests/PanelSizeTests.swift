@@ -51,15 +51,14 @@ final class PanelSizeTests: XCTestCase {
   /// A drag that pushes past a clamp shouldn't keep posting identical frames.
   func testSetAtClampDoesNotNotifyRepeatedly() {
     PanelSize.set(NSSize(width: PanelSize.maxWidth, height: PanelSize.defaultHeight))
-    var posts = 0
-    let token = NotificationCenter.default.addObserver(
-      forName: PanelSize.didChange, object: nil, queue: nil
-    ) { _ in posts += 1 }
-    defer { NotificationCenter.default.removeObserver(token) }
+    // Posted synchronously, so an inverted expectation fails the moment one
+    // arrives; the short wait only bounds the test.
+    let posted = expectation(forNotification: PanelSize.didChange, object: nil)
+    posted.isInverted = true
 
     PanelSize.set(NSSize(width: PanelSize.maxWidth + 200, height: PanelSize.defaultHeight))
     PanelSize.set(NSSize(width: PanelSize.maxWidth + 400, height: PanelSize.defaultHeight))
-    XCTAssertEqual(posts, 0, "no-op resizes must not notify")
+    wait(for: [posted], timeout: 0.1)
   }
 
   /// The slimmer default still leaves a sane desktop-preview zoom.

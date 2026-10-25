@@ -48,7 +48,11 @@ enum ProcessRunner {
 
     // Drain stderr concurrently: reading the pipes in sequence deadlocks if the
     // second one fills its 64K buffer while we're still blocked on the first.
-    var errData = Data()
+    //
+    // `nonisolated(unsafe)` because the compiler can't see the semaphore: the
+    // drain block writes errData once and then signals; this thread reads it
+    // only after `errDone.wait()` returns, so the two never overlap.
+    nonisolated(unsafe) var errData = Data()
     let errDone = DispatchSemaphore(value: 0)
     DispatchQueue.global().async {
       errData = errPipe.fileHandleForReading.readDataToEndOfFile()

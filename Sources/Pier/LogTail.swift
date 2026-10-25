@@ -237,7 +237,9 @@ final class LogTailer: ObservableObject {
     toolPath: String, arguments: [String], environment: [String: String] = [:]
   ) {
     let source = self.source
-    DispatchQueue.global(qos: .userInitiated).async {
+    // Weak here too: the inner `[weak self]` alone still captures the tailer
+    // strongly in this closure for the length of the CLI call.
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
       let result = ProcessRunner.run(toolPath, arguments, timeout: 8, environment: environment)
       Task { @MainActor [weak self] in
         guard let self, self.source == source else { return }

@@ -6,6 +6,7 @@ enum MemoryProbe {
   /// `--print-memory`: one live reading, in the same words the glance and its
   /// tooltip use, so the numbers can be checked against Activity Monitor or
   /// `vm_stat`. Two samples a second apart, so the paging rate has a baseline.
+  @MainActor
   static func printMemory() {
     let monitor = MemoryMonitor()
     monitor.sample()
@@ -17,7 +18,7 @@ enum MemoryProbe {
     }
     print("glance:  \(MemoryFormat.glance(s))")
     print(MemoryFormat.tooltip(s).split(separator: "\n").map { "  \($0)" }.joined(separator: "\n"))
-    print("page size: \(vm_kernel_page_size) bytes (vm_stat reports the same unit)")
+    print("page size: \(KernelPage.size) bytes (vm_stat reports the same unit)")
   }
 
   /// Three states worth grading: a healthy busy Mac (this dev machine's real

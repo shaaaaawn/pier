@@ -10,7 +10,7 @@
 
   [![CI](https://github.com/shaaaaawn/pier/actions/workflows/ci.yml/badge.svg)](https://github.com/shaaaaawn/pier/actions/workflows/ci.yml)
   ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-16324a)
-  ![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-f6a45b)
+  ![Swift 6.0+](https://img.shields.io/badge/Swift-6.0%2B-f6a45b)
 </div>
 
 Pier answers the question that gets harder as agentic development gets busier:

@@ -20,7 +20,7 @@ extension PortMonitor {
   /// desktop. pid 1 is launchd. No probe produces these today (`ps -ax` omits
   /// pid 0, lsof reports real pids), but `Int32("-1")` parses happily, so one
   /// malformed line away from a disaster is not a margin worth keeping.
-  static func isSignalable(_ pid: Int32) -> Bool {
+  nonisolated static func isSignalable(_ pid: Int32) -> Bool {
     pid > 1
   }
 
@@ -43,7 +43,7 @@ extension PortMonitor {
   /// Run a Docker lifecycle or prune action, then refresh so the panel reflects
   /// the result. Output is surfaced on failure — a prune that can't run should
   /// say why rather than look like nothing happened.
-  func run(_ action: DockerAction, completion: ((Bool, String) -> Void)? = nil) {
+  func run(_ action: DockerAction, completion: (@MainActor (Bool, String) -> Void)? = nil) {
     guard let dockerPath else {
       completion?(false, "The docker CLI isn't installed.")
       return
@@ -57,7 +57,7 @@ extension PortMonitor {
   }
 
   /// Apple `container` equivalent.
-  func run(_ action: AppleAction, completion: ((Bool, String) -> Void)? = nil) {
+  func run(_ action: AppleAction, completion: (@MainActor (Bool, String) -> Void)? = nil) {
     guard let containerPath else {
       completion?(false, "Apple's container CLI isn't installed.")
       return
@@ -72,7 +72,7 @@ extension PortMonitor {
 
   private func run(
     tool: String, arguments: [String], timeout: TimeInterval,
-    completion: ((Bool, String) -> Void)? = nil
+    completion: (@MainActor (Bool, String) -> Void)? = nil
   ) {
     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
       let result = ProcessRunner.run(tool, arguments, timeout: timeout)
@@ -168,7 +168,7 @@ extension PortMonitor {
   }
 
   /// Full command line for hover tooltips, cached per pid.
-  func commandLine(for pid: Int32, completion: @escaping (String) -> Void) {
+  func commandLine(for pid: Int32, completion: @escaping @MainActor (String) -> Void) {
     if let cached = commandCache[pid] {
       completion(cached)
       return

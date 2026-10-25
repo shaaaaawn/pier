@@ -5,6 +5,10 @@ import UserNotifications
 /// Each one runs before the app loop and exits, so none of them touch the
 /// live menu bar. `--probe-anchor` is the exception: it needs the real status
 /// item, so it's handled in AppDelegate after launch.
+///
+/// Main-actor: `main.swift` calls in from top-level code, before the run loop,
+/// and the probes drive the same main-actor objects the app does.
+@MainActor
 enum DebugFlags {
   static func handleIfPresent(_ args: [String]) {
     if args.contains("--print-memory") {
@@ -423,20 +427,22 @@ enum DebugFlags {
   private static func probeNotify() -> Never {
     _ = NSApplication.shared
     NSApp.setActivationPolicy(.accessory)
-    let center = UNUserNotificationCenter.current()
-    center.getNotificationSettings { settings in
+    // Re-fetched inside each callback rather than captured: they arrive on a
+    // background queue, and the center isn't `Sendable`.
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
       print("bundle id:  \(Bundle.main.bundleIdentifier ?? "none")")
       print(
         "authorized: \(settings.authorizationStatus.rawValue) "
           + "(0=notDetermined 1=denied 2=authorized 3=provisional)")
-      center.requestAuthorization(options: [.alert, .sound]) { granted, error in
+      UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) {
+        granted, error in
         print("request:    granted=\(granted) error=\(error?.localizedDescription ?? "nil")")
         guard granted else { exit(2) }
         let content = UNMutableNotificationContent()
         content.title = "Pier"
         content.body = "Claude Code started node · chrome-devtools-mcp"
-        center.add(UNNotificationRequest(identifier: "probe", content: content, trigger: nil)) {
-          error in
+        let request = UNNotificationRequest(identifier: "probe", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
           print("delivery:   \(error?.localizedDescription ?? "posted")")
           DispatchQueue.main.asyncAfter(deadline: .now() + 1) { exit(0) }
         }

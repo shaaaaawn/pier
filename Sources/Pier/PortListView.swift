@@ -364,7 +364,9 @@ struct VisualEffectBackground: NSViewRepresentable {
 /// Cached loader for harness brand icons bundled in Resources/icons/.
 /// Note: SPM's `.process` flattens PNGs to the bundle root, so no
 /// subdirectory is used in the lookup. A missing/unloadable icon returns
-/// nil and the UI falls back to text.
+/// nil and the UI falls back to text. Main-actor: only views read it, and the
+/// cache is unsynchronized.
+@MainActor
 enum HarnessIcons {
   static var cache: [String: NSImage?] = [:]
 

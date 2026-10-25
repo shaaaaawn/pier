@@ -13,7 +13,7 @@ import Foundation
 // Docker / Apple Containers / MCP collection, and the CLI snapshot probe.
 extension PortMonitor {
   /// pid → full command line, from `ps -axo pid=,user=,command=`.
-  static func parseCommands(_ output: String) -> [Int32: String] {
+  nonisolated static func parseCommands(_ output: String) -> [Int32: String] {
     var map: [Int32: String] = [:]
     for line in output.split(separator: "\n") {
       if let (pid, command) = commandLine(line) { map[pid] = command }
@@ -34,7 +34,7 @@ extension PortMonitor {
   /// the split it was meant to avoid. Byte-clean implies the Character-level
   /// split-and-join reproduces the text verbatim: its separators are exactly the
   /// " " and "\t" Characters, which need those bytes.
-  static func isSingleSpaced(_ text: Substring) -> Bool {
+  nonisolated static func isSingleSpaced(_ text: Substring) -> Bool {
     var previousWasSpace = false
     for byte in text.utf8 {
       if byte == 0x09 { return false }
@@ -48,7 +48,7 @@ extension PortMonitor {
     return !previousWasSpace
   }
 
-  static func commandLine(_ line: Substring) -> (Int32, String)? {
+  nonisolated static func commandLine(_ line: Substring) -> (Int32, String)? {
     let isSpace = { (c: Character) in c == " " || c == "\t" }
     let afterLead = line.drop(while: isSpace)
     let pidToken = afterLead.prefix(while: { !isSpace($0) })
@@ -64,7 +64,7 @@ extension PortMonitor {
   /// Background activity: docker + apple containers + MCP processes.
   /// Every section degrades to empty when its CLI is missing or its daemon
   /// is down (non-zero exit → skipped below).
-  static func collectActivity(
+  nonisolated static func collectActivity(
     dockerPath: String?, containerPath: String?, table: ProcessTable, cmux: CmuxSnapshot?,
     commandsOutput: String? = nil
   ) -> (
@@ -108,7 +108,7 @@ extension PortMonitor {
 
   /// `Pier --print-activity`: one synchronous collection pass, printed as
   /// text. Lets the detectors be verified live without opening the panel.
-  static func printActivitySnapshot() {
+  nonisolated static func printActivitySnapshot() {
     let psOut =
       ProcessRunner.run("/bin/ps", ["-axo", "pid=,ppid=,ucomm="], timeout: 5)?.stdout ?? ""
     let snapshot = collectActivity(
@@ -148,7 +148,7 @@ extension PortMonitor {
   /// section and a ready-but-idle Docker becomes unreachable from the UI, with no
   /// way to stop it or reclaim disk. MCP has no controls, so it stays hidden when
   /// empty, and a search hides empty sections too (an empty result is the answer).
-  static func activityGroups(
+  nonisolated static func activityGroups(
     activity: [ActivityEntry], matching query: String, filter: PierFilter,
     installedEngines: Set<ActivityKind>
   ) -> [ActivityGroup] {

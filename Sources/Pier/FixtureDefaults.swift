@@ -19,6 +19,9 @@ import Foundation
 /// So a render now pins **every** key it could read and restores the previous
 /// values on exit, via `atexit` so it survives the `exit()` calls the render
 /// entry points make.
+///
+/// Main-actor: every render entry point is, and `saved` is unsynchronized.
+@MainActor
 enum FixtureDefaults {
   /// Every key the panel reads. Pinning a subset is what caused the flake, so
   /// adding a new `@AppStorage` key to the UI means adding it here too.
@@ -62,6 +65,14 @@ enum FixtureDefaults {
     restoreRegistered = true
     // The render entry points are `-> Never` and call exit() directly, so a
     // deferred restore would never run.
-    atexit { FixtureDefaults.restore() }
+    //
+    // The handler runs on whichever thread calls exit(). Every render exits
+    // from the main thread, but a C callback can't prove that to the compiler,
+    // and `assumeIsolated` off-main would trap mid-exit — so check, and skip
+    // rather than crash if a future caller exits from a background queue.
+    atexit {
+      guard Thread.isMainThread else { return }
+      MainActor.assumeIsolated { FixtureDefaults.restore() }
+    }
   }
 }

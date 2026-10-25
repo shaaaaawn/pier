@@ -54,6 +54,7 @@ final class FilterTests: XCTestCase {
     XCTAssertTrue(PierFilter.ports.activityKinds.isEmpty)
   }
 
+  @MainActor
   func testVisibleCountCombinesPortsAndActivity() {
     let activity = [
       ActivityEntry(kind: .docker, name: "web", detail: "nginx · Up"),

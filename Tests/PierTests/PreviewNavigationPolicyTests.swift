@@ -67,4 +67,15 @@ final class PreviewNavigationPolicyTests: XCTestCase {
     XCTAssertTrue(
       PreviewNavigationPolicy.allows(url("http://EXAMPLE.com/"), expectedHost: "example.com"))
   }
+
+  /// The policy is only enforced if WebKit can find the delegate method. A
+  /// signature that drifts from the SDK's — the Swift 6 move made the decision
+  /// handler `@MainActor` — still compiles, with nothing but a "nearly matches"
+  /// warning, and the method is no longer exported under the selector WebKit
+  /// asks for. Every navigation is then allowed.
+  func testControllerExposesTheNavigationPolicyHook() {
+    XCTAssertTrue(
+      PreviewController.instancesRespond(
+        to: NSSelectorFromString("webView:decidePolicyForNavigationAction:decisionHandler:")))
+  }
 }

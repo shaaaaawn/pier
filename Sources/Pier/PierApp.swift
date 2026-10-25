@@ -190,6 +190,10 @@ final class MenuBarController: NSObject {
     checkStatusItemVisibility(after: 2.0, reason: "launch")
     NotificationCenter.default
       .publisher(for: NSApplication.didChangeScreenParametersNotification)
+      // AppKit posts this on main today. The hop makes that a guarantee: this
+      // sink is main-actor code, and under Swift 6 a delivery from any other
+      // thread traps, taking the status item with it.
+      .receive(on: RunLoop.main)
       .sink { [weak self] _ in
         // Two probes: the first catches the common case, the second covers a
         // slow re-place after a display wakes or is reconnected.

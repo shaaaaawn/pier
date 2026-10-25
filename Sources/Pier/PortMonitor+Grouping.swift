@@ -19,7 +19,7 @@ extension PortMonitor {
   /// rows arrive interleaved. Entry order is therefore not meaningful — every
   /// grouping and sort downstream is a total order, which is what keeps the
   /// panel stable regardless.
-  static func buildEntries(sockets: String) -> [PortEntry] {
+  nonisolated static func buildEntries(sockets: String) -> [PortEntry] {
     var order: [String] = []
     var byKey: [String: PortEntry] = [:]
     let records = LsofParser.parse(sockets)
@@ -44,7 +44,7 @@ extension PortMonitor {
 
   /// Apply the scope chip + hide-system toggle before grouping. Pure so the
   /// chip semantics are unit-testable rather than buried in the view.
-  static func visibleEntries(
+  nonisolated static func visibleEntries(
     _ entries: [PortEntry], filter: PierFilter, hideSystem: Bool
   ) -> [PortEntry] {
     guard filter.showsPorts else { return [] }
@@ -57,7 +57,7 @@ extension PortMonitor {
 
   /// Filtered, grouped (attributed first, Other, then System), clustered by
   /// pid+attribution, ordered by `sort`. Pure/static for testability.
-  static func buildGroups(
+  nonisolated static func buildGroups(
     entries: [PortEntry], matching query: String, sort: PortSort = .port,
     history: UsageHistory = UsageHistory()
   ) -> [PortGroup] {
