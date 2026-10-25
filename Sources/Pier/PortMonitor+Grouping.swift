@@ -49,9 +49,7 @@ extension PortMonitor {
   ) -> [PortEntry] {
     guard filter.showsPorts else { return [] }
     return entries.filter { entry in
-      guard filter.admits(entry) else { return false }
-      if hideSystem, entry.attribution == .system { return false }
-      return true
+      !(hideSystem && entry.attribution == .system)
     }
   }
 

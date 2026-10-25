@@ -224,7 +224,6 @@ enum PierSection: Identifiable {
 /// composes with the search text and the hide-system toggle.
 enum PierFilter: String, CaseIterable, Identifiable {
   case all
-  case web
   case ports
   case containers
   case mcp
@@ -234,7 +233,6 @@ enum PierFilter: String, CaseIterable, Identifiable {
   var label: String {
     switch self {
     case .all: return "All"
-    case .web: return "Web"
     case .ports: return "Ports"
     // Umbrella over both engines — the Docker and Apple Containers sections
     // sit side by side beneath it, neither nested under the other.
@@ -246,7 +244,6 @@ enum PierFilter: String, CaseIterable, Identifiable {
   var symbol: String {
     switch self {
     case .all: return "square.grid.2x2"
-    case .web: return "globe"
     case .ports: return "network"
     case .containers: return "shippingbox"
     case .mcp: return "bolt.horizontal.circle"
@@ -256,7 +253,7 @@ enum PierFilter: String, CaseIterable, Identifiable {
   /// Does this scope show listening-port rows at all?
   var showsPorts: Bool {
     switch self {
-    case .all, .web, .ports: return true
+    case .all, .ports: return true
     case .containers, .mcp: return false
     }
   }
@@ -269,13 +266,15 @@ enum PierFilter: String, CaseIterable, Identifiable {
     // guests that quietly hold gigabytes of RAM.
     case .containers: return [.docker, .apple, .simulator]
     case .mcp: return [.mcp]
-    case .web, .ports: return []
+    case .ports: return []
     }
   }
 
-  /// `web` keeps only rows with a browsable URL (TCP).
-  func admits(_ entry: PortEntry) -> Bool {
-    self == .web ? entry.previewURL != nil : true
+  /// The saved chip → a scope. "web" was a separate chip that showed the same
+  /// rows as Ports minus UDP, so it was removed; a saved "web" lands on Ports,
+  /// the nearest thing, rather than resetting to All.
+  static func stored(_ raw: String) -> PierFilter {
+    raw == "web" ? .ports : PierFilter(rawValue: raw) ?? .all
   }
 }
 

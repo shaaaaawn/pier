@@ -6,7 +6,7 @@ import SwiftUI
 /// for UI design iteration without touching the live menu bar.
 enum FixtureRenderer {
   /// `--render-fixture <out.png> [scope]` — scope optionally preselects a
-  /// filter chip (all/web/ports/containers/mcp) so each state is gradeable.
+  /// filter chip (all/ports/containers/mcp) so each state is gradeable.
   @MainActor
   static func render(to path: String, scope: String? = nil) -> Never {
     render(to: path, entries: FixtureData.entries, scope: scope)
