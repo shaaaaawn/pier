@@ -41,6 +41,7 @@ found:
 | `--print-groups` | the exact sections/rows the panel would show (attribution end-to-end) |
 | `--print-activity` | live Docker / Apple Containers / Simulators / MCP detection, with usage |
 | `--print-memory` | RAM / swap glance, pressure + menu bar tint, disk free — live, then fixtures |
+| `--render-fixture-simulators <dir>` | the Simulators section at 340 and 440 pt, no device needed |
 | `--print-docker` / `--print-apple` | engine state + reclaimable space (read-only, never prunes) |
 | `--print-cmux` | whether workspace grouping can work, and why not |
 | `--probe-anchor` | where the panel landed vs its menu bar icon |

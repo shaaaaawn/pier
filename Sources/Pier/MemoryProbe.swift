@@ -91,7 +91,7 @@ enum MemoryProbe {
   }
 
   @MainActor
-  private static func write<V: View>(_ view: V, size: NSSize, to path: String) -> Bool {
+  static func write<V: View>(_ view: V, size: NSSize, to path: String) -> Bool {
     let hosting = NSHostingView(rootView: view)
     let window = NSWindow(
       contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless],

@@ -178,3 +178,16 @@ final class SimulatorsTests: XCTestCase {
     XCTAssertFalse(groups.contains { $0.kind == .simulator })
   }
 }
+
+final class SimulatorSparklineTests: XCTestCase {
+  /// The sparkline under a simulator row follows the device total, not the
+  /// near-idle launchd_sim it's keyed by.
+  func testSimulatorHistoryTracksTheDevice() {
+    let table = ProcessTable.parse("500 1 0.1 1000 launchd_sim\n501 500 30.0 9000 SpringBoard")
+    let sim = ActivityEntry(
+      kind: .simulator, name: "iPhone", detail: "iOS 26.5", pids: [500],
+      usage: Usage(cpu: 30.1, rssKB: 10_000))
+    let readings = MonitorAssembly.cpuReadings(entries: [], activity: [sim], table: table)
+    XCTAssertEqual(readings[500], 30.1)
+  }
+}

@@ -179,6 +179,11 @@ extension PortListView {
         Text(verbatim: "→ " + entry.ports.map(String.init).joined(separator: ", "))
           .font(.system(size: 10, design: .monospaced))
       }
+      // Memory is why you'd shut a simulator down, so it gets the subline
+      // rather than hiding in the usage tooltip like other rows.
+      if entry.kind == .simulator, let usage = entry.usage {
+        Text(verbatim: "· \(usage.memoryLabel)")
+      }
     }
     .font(.system(size: 11))
     .foregroundStyle(.secondary)
