@@ -55,7 +55,7 @@ struct PortListView: View {
   @State var showEvents = false
 
   var filter: PierFilter {
-    PierFilter(rawValue: filterRaw) ?? .all
+    PierFilter.stored(filterRaw)
   }
 
   var sort: PortSort {

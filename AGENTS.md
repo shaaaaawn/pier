@@ -180,8 +180,10 @@ Do not re-learn these. Each has a test locking it in.
     on a display running a fullscreen Split View space. It looks like exactly
     the signal you want for "the system hid my icon" and it is not; including it
     flagged a visible icon. Only `window == nil` means hidden.
-17. **The chip row is full at the 340pt minimum panel width.** Add one more
-    control and the chip labels wrap mid-word ("Co/nta/ine/rs"). Every other
+17. **The chip row fills fast at the 340pt minimum panel width.** With five
+    chips it was full, and one more control wrapped the labels mid-word
+    ("Co/nta/ine/rs"); Web was later dropped (same rows as Ports minus UDP),
+    which bought one chip's width back. Every other
     fixture renders at the 440pt default and hides this, so grade new header or
     chip-row controls with `--render-fixture-narrow`.
 18. **A "nearly matches optional requirement" warning means the method is dead.**

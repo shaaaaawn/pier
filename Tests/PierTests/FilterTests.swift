@@ -22,10 +22,13 @@ final class FilterTests: XCTestCase {
 
   // MARK: - Scope chips
 
-  func testWebScopeKeepsOnlyBrowsableRows() {
-    let visible = PortMonitor.visibleEntries(sample, filter: .web, hideSystem: false)
-    // UDP has no previewURL, so it drops out of the Web scope.
-    XCTAssertEqual(visible.map(\.port), [3000, 8080])
+  /// Web was removed as a near-duplicate of Ports. A saved "web" opens on
+  /// Ports; anything unknown falls back to All.
+  func testSavedWebScopeOpensOnPorts() {
+    XCTAssertEqual(PierFilter.stored("web"), .ports)
+    XCTAssertEqual(PierFilter.stored("mcp"), .mcp)
+    XCTAssertEqual(PierFilter.stored("nonsense"), .all)
+    XCTAssertFalse(PierFilter.allCases.map(\.rawValue).contains("web"))
   }
 
   func testPortsScopeKeepsUDPToo() {
@@ -50,7 +53,6 @@ final class FilterTests: XCTestCase {
     XCTAssertEqual(PierFilter.all.activityKinds, [.docker, .apple, .simulator, .mcp])
     XCTAssertEqual(PierFilter.containers.activityKinds, [.docker, .apple, .simulator])
     XCTAssertEqual(PierFilter.mcp.activityKinds, [.mcp])
-    XCTAssertTrue(PierFilter.web.activityKinds.isEmpty)
     XCTAssertTrue(PierFilter.ports.activityKinds.isEmpty)
   }
 
@@ -65,8 +67,8 @@ final class FilterTests: XCTestCase {
     XCTAssertEqual(monitor.visibleCount(matching: "", filter: .all, hideSystem: false), 6)
     // MCP scope: just the two grouped pids.
     XCTAssertEqual(monitor.visibleCount(matching: "", filter: .mcp, hideSystem: false), 2)
-    // Web scope: browsable ports only, no activity.
-    XCTAssertEqual(monitor.visibleCount(matching: "", filter: .web, hideSystem: false), 2)
+    // Ports scope: every port, no activity.
+    XCTAssertEqual(monitor.visibleCount(matching: "", filter: .ports, hideSystem: false), 3)
   }
 
   // MARK: - Preview viewport
@@ -195,7 +197,7 @@ final class EmptyEngineSectionTests: XCTestCase {
 
     XCTAssertTrue(
       PortMonitor.activityGroups(
-        activity: [], matching: "", filter: .web, installedEngines: [.docker, .apple]
-      ).isEmpty, "Web scope shows no engine sections")
+        activity: [], matching: "", filter: .ports, installedEngines: [.docker, .apple]
+      ).isEmpty, "Ports scope shows no engine sections")
   }
 }

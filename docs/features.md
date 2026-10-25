@@ -23,7 +23,7 @@ System services are separated from user development work.
 ## Search, scopes, and sorting
 
 Search matches ports, process names, harnesses, and workspaces. Scope chips
-filter All, Web, Ports, Containers, or MCP entries. Sections can be collapsed,
+filter All, Ports, Containers, or MCP entries. Sections can be collapsed,
 and system processes can be hidden.
 
 Available sort orders:
