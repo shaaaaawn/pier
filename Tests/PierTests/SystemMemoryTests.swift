@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import XCTest
 
@@ -53,6 +54,39 @@ final class SystemMemoryTests: XCTestCase {
   func testUnknownPressureReadsAsNormal() {
     XCTAssertEqual(MemoryPressure(sysctlLevel: 0), .normal)
     XCTAssertEqual(MemoryPressure(sysctlLevel: 3), .normal)
+  }
+
+  // MARK: - Menu bar tint
+
+  /// Colour only under pressure: a normal Mac keeps the template icon that
+  /// inverts with the menu bar like every other item.
+  func testMenuBarTintFollowsPressureOnly() {
+    XCTAssertNil(MemoryPressure.normal.statusTint)
+    XCTAssertEqual(MemoryPressure.warning.statusTint, .systemYellow)
+    XCTAssertEqual(MemoryPressure.critical.statusTint, .systemRed)
+  }
+
+  func testFixedMonitorReportsItsFixturePressure() {
+    let fixed = MemorySnapshot(
+      total: gb(32), app: gb(1), wired: gb(1), compressed: gb(1), cached: 0,
+      swapUsed: 0, swapTotal: 0, pressure: .critical, swapoutsPerSecond: nil)
+    XCTAssertEqual(MemoryMonitor(fixed: fixed).pressure, .critical)
+  }
+
+  /// Repeating the same level must not republish — the menu bar would redraw
+  /// on every 2 s sample otherwise.
+  func testPressureRepublishesOnlyOnChange() {
+    let fixed = MemorySnapshot(
+      total: gb(32), app: gb(1), wired: gb(1), compressed: gb(1), cached: 0,
+      swapUsed: 0, swapTotal: 0, pressure: .normal, swapoutsPerSecond: nil)
+    let monitor = MemoryMonitor(fixed: fixed)
+    var publishes = 0
+    let sub = monitor.$pressure.dropFirst().sink { _ in publishes += 1 }
+    monitor.updatePressure(.normal)
+    monitor.updatePressure(.warning)
+    monitor.updatePressure(.warning)
+    XCTAssertEqual(publishes, 1)
+    sub.cancel()
   }
 
   // MARK: - Paging rate

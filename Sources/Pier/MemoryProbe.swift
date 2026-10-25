@@ -18,6 +18,7 @@ enum MemoryProbe {
     print("glance:  \(MemoryFormat.glance(s))")
     print(MemoryFormat.tooltip(s).split(separator: "\n").map { "  \($0)" }.joined(separator: "\n"))
     print("page size: \(vm_kernel_page_size) bytes (vm_stat reports the same unit)")
+    print("menu bar tint: \(monitor.pressure.tintName) (\(monitor.pressure.label) pressure)")
   }
 
   /// Three states worth grading: a healthy busy Mac (this dev machine's real

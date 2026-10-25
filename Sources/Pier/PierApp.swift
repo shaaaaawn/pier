@@ -124,6 +124,18 @@ final class MenuBarController: NSObject {
       }
       .store(in: &cancellables)
 
+    memory.$pressure
+      .removeDuplicates()
+      .receive(on: RunLoop.main)
+      .sink { [weak self] level in
+        if level != self?.memoryPressure {
+          PierLog.shared.log("memory pressure: \(level.label)")
+        }
+        self?.memoryPressure = level
+        self?.refreshTitle()
+      }
+      .store(in: &cancellables)
+
     monitor.$unseenEvents
       .receive(on: RunLoop.main)
       .sink { [weak self] unseen in
@@ -170,15 +182,13 @@ final class MenuBarController: NSObject {
   }()
 
   private var portCount = 0
+  private var memoryPressure: MemoryPressure = .normal
   private var unseenEvents = 0
 
   private func refreshTitle() {
     updateTitle(portCount, unseen: unseenEvents)
   }
 
-  /// A bullet after the port count marks unseen start/stop events. Deliberately
-  /// monochrome: the icon is a template image that inverts with the menu bar,
-  /// and a colored dot beside it would be the one thing that doesn't.
   /// Notices when the system has taken the status item away. Nothing can undo
   /// that from inside the app, but "macOS hid the icon" is a different answer
   /// from "Pier crashed", and only the log can tell you which happened.
@@ -208,12 +218,23 @@ final class MenuBarController: NSObject {
     }
   }
 
+  /// A bullet after the port count marks unseen start/stop events. Deliberately
+  /// monochrome: the icon is a template image that inverts with the menu bar,
+  /// and a colored dot beside it would be the one thing that doesn't.
+  ///
+  /// The single exception is memory pressure: at Warning or Critical the whole
+  /// item takes Activity Monitor's yellow or red. That colour has to mean
+  /// something, so it appears only when the kernel says so, never for "lots of
+  /// RAM used" (which is normal on macOS).
   private func updateTitle(_ count: Int, unseen: Int) {
     statusItem.button?.title = unseen > 0 ? " \(count) •" : " \(count)"
-    statusItem.button?.toolTip =
+    statusItem.button?.contentTintColor = memoryPressure.statusTint
+    var tip =
       unseen > 0
       ? "Pier — \(unseen) new event\(unseen == 1 ? "" : "s")"
       : "Pier — listening ports"
+    if memoryPressure != .normal { tip += "\nMemory pressure: \(memoryPressure.label)" }
+    statusItem.button?.toolTip = tip
   }
 
   // MARK: - Placement
