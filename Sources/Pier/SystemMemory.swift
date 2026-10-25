@@ -1,3 +1,4 @@
+import AppKit
 import Darwin
 import Foundation
 import SwiftUI
@@ -58,6 +59,27 @@ enum MemoryPressure: Int, Equatable {
     case .normal: return "Normal"
     case .warning: return "Warning"
     case .critical: return "Critical"
+    }
+  }
+
+  /// The menu bar icon's tint. **nil at normal**, so the template image keeps
+  /// inverting with the menu bar the way every other item does; colour appears
+  /// only when the kernel says memory is under pressure. Same yellow/red as
+  /// Activity Monitor and the footer glance, so the two never disagree.
+  var statusTint: NSColor? {
+    switch self {
+    case .normal: return nil
+    case .warning: return .systemYellow
+    case .critical: return .systemRed
+    }
+  }
+
+  /// For probes and logs.
+  var tintName: String {
+    switch self {
+    case .normal: return "none"
+    case .warning: return "yellow"
+    case .critical: return "red"
     }
   }
 
@@ -183,6 +205,15 @@ enum MemoryFormat {
 @MainActor
 final class MemoryMonitor: ObservableObject {
   @Published private(set) var snapshot: MemorySnapshot?
+  /// Separate from `snapshot` so the menu bar item observes only this: a RAM
+  /// tick must not redraw the status item, and pressure must stay current while
+  /// the panel is closed and nothing is sampling.
+  @Published private(set) var pressure: MemoryPressure = .normal
+  /// Startup-volume free space. Disk changes slowly, so it's read on panel open
+  /// and then once a minute — not on the 2 s memory tick.
+  @Published private(set) var disk: DiskSnapshot?
+  static let diskInterval: TimeInterval = 60
+  private var lastDiskRead: TimeInterval?
 
   /// Two seconds: Activity Monitor's default refresh, and at ~3 µs per sample
   /// the interval is about legibility, not cost.
@@ -192,23 +223,45 @@ final class MemoryMonitor: ObservableObject {
   private let isFixed: Bool
   private var timer: Timer?
   private var baseline: (count: UInt64, at: TimeInterval)?
+  /// Kernel push notifications for pressure transitions — no polling. This is
+  /// the one consumer that needs pressure while the panel is closed (the menu
+  /// bar tint), which is why it exists at all.
+  /// A `let`, set once, so the nonisolated deinit may cancel it.
+  private let pressureSource: DispatchSourceMemoryPressure?
 
   init() {
     host = mach_host_self()
     isFixed = false
+    // The source only reports *changes*, so read the current level once.
+    pressure = Self.readPressure()
+    let source = DispatchSource.makeMemoryPressureSource(
+      eventMask: [.normal, .warning, .critical], queue: .main)
+    // Stored before the handler captures self: every property must be set first.
+    pressureSource = source
+    // Re-read the level rather than trusting the event's flags: the sysctl is
+    // the same value the panel's own sampling uses, so the two can't disagree.
+    // The source delivers on the main queue, so asserting isolation is safe.
+    source.setEventHandler { [weak self] in
+      MainActor.assumeIsolated { self?.updatePressure(Self.readPressure()) }
+    }
+    source.activate()
   }
 
   /// Fixture renders: a fixed value, never sampled, so PNGs stay reproducible.
-  init(fixed: MemorySnapshot) {
+  init(fixed: MemorySnapshot, disk: DiskSnapshot? = nil) {
     host = mach_host_self()
     isFixed = true
     snapshot = fixed
+    pressure = fixed.pressure
+    self.disk = disk
+    pressureSource = nil
   }
 
   /// The timer can't be invalidated here: deinit is nonisolated and `timer` is
   /// main-actor state. Its block holds `self` weakly and invalidates itself on
   /// the first tick after we're gone.
   deinit {
+    pressureSource?.cancel()
     mach_port_deallocate(mach_task_self_, host)
   }
 
@@ -222,6 +275,7 @@ final class MemoryMonitor: ObservableObject {
     // A rate measured across the time the panel was closed would average the
     // whole gap into one meaningless number. Start over.
     baseline = nil
+    lastDiskRead = nil
     sample()
     let timer = Timer(timeInterval: Self.interval, repeats: true) { [weak self] timer in
       guard let self else { return timer.invalidate() }
@@ -254,6 +308,34 @@ final class MemoryMonitor: ObservableObject {
       swapUsed: swap.xsu_used, swapTotal: swap.xsu_total,
       pressureLevel: level, swapoutsPerSecond: rate)
     if snapshot?.displayKey != next.displayKey { snapshot = next }
+    updatePressure(next.pressure)
+    readDiskIfDue(now: now)
+  }
+
+  /// Off the main thread: Finder's "available" figure costs ~11.5 ms, and this
+  /// runs from the panel's main-thread timer.
+  private func readDiskIfDue(now: TimeInterval) {
+    if let last = lastDiskRead, now - last < Self.diskInterval { return }
+    lastDiskRead = now
+    DispatchQueue.global(qos: .utility).async { [weak self] in
+      let reading = DiskSpace.read()
+      DispatchQueue.main.async {
+        guard let self, self.disk?.displayKey != reading?.displayKey else { return }
+        self.disk = reading
+      }
+    }
+  }
+
+  /// Publishes only on a real change, so the menu bar isn't redrawn per sample.
+  func updatePressure(_ level: MemoryPressure) {
+    if pressure != level { pressure = level }
+  }
+
+  static func readPressure() -> MemoryPressure {
+    var level: Int32 = 0
+    var size = MemoryLayout<Int32>.size
+    sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &size, nil, 0)
+    return MemoryPressure(sysctlLevel: level)
   }
 
   private func readCounters() -> VMCounters? {

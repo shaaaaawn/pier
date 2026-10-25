@@ -7,7 +7,7 @@ dependencies.
 ## Toolchain
 
 - macOS 13 or later
-- Xcode 16 or later
+- Xcode 26 or later
 - Xcode Command Line Tools selected with `xcode-select`
 
 Check the environment:
@@ -63,6 +63,12 @@ processes, sockets, and log tailers.
 When changing UI structure, render before and after and compare every variant.
 The minimum-width fixture catches controls that fit at the default width but wrap
 at 340 points.
+
+The README screenshot, `docs/images/pier-panel.png`, is the default list fixture.
+After a visible UI change, regenerate it with
+`swift build && .build/debug/Pier --render-fixture docs/images/pier-panel.png`.
+Never replace it with a capture of a real panel: that shows your own processes,
+paths and project names.
 
 ## Live probes
 

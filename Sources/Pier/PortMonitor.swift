@@ -171,7 +171,7 @@ final class PortMonitor: ObservableObject {
 
       let activitySnapshot = Self.collectActivity(
         dockerPath: self?.dockerPath, containerPath: self?.containerPath,
-        table: table, cmux: cmux, commandsOutput: fullPS)
+        table: table, cmux: cmux, commandsOutput: fullPS, commands: assembled.commands)
       let activity = activitySnapshot.entries
 
       let readings = MonitorAssembly.cpuReadings(

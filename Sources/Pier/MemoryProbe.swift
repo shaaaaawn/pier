@@ -19,6 +19,13 @@ enum MemoryProbe {
     print("glance:  \(MemoryFormat.glance(s))")
     print(MemoryFormat.tooltip(s).split(separator: "\n").map { "  \($0)" }.joined(separator: "\n"))
     print("page size: \(KernelPage.size) bytes (vm_stat reports the same unit)")
+    print("menu bar tint: \(monitor.pressure.tintName) (\(monitor.pressure.label) pressure)")
+    if let disk = DiskSpace.read() {
+      print("disk:    \(DiskSpace.format(disk.free)) free")
+      print(
+        MemoryFormat.diskTooltip(disk).split(separator: "\n").map { "  \($0)" }.joined(
+          separator: "\n"))
+    }
   }
 
   /// Three states worth grading: a healthy busy Mac (this dev machine's real
@@ -48,6 +55,10 @@ enum MemoryProbe {
     ]
   }()
 
+  /// This machine's real shape: ~89 GB free of 494 GB, Finder showing ~92.
+  static let fixtureDisk = DiskSnapshot(
+    free: 88_700_000_000, total: 494_400_000_000, availableIncludingPurgeable: 91_900_000_000)
+
   /// `--render-fixture-memory <dir>`: the **full panel**, not the glance alone,
   /// at the 340pt minimum and the 440pt default. A glance rendered in isolation
   /// can't show the footer overflowing — the same failure as the chip row (trap
@@ -66,7 +77,7 @@ enum MemoryProbe {
           history: FixtureData.history)
         let view = PortListView()
           .environmentObject(monitor)
-          .environment(\.memoryMonitor, MemoryMonitor(fixed: snapshot))
+          .environment(\.memoryMonitor, MemoryMonitor(fixed: snapshot, disk: fixtureDisk))
         let path = "\(dir)/memory-\(name)-\(Int(width)).png"
         guard write(view, size: NSSize(width: width, height: PortListView.panelHeight), to: path)
         else {
@@ -81,7 +92,7 @@ enum MemoryProbe {
   }
 
   @MainActor
-  private static func write<V: View>(_ view: V, size: NSSize, to path: String) -> Bool {
+  static func write<V: View>(_ view: V, size: NSSize, to path: String) -> Bool {
     let hosting = NSHostingView(rootView: view)
     let window = NSWindow(
       contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless],

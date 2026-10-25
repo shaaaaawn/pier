@@ -235,7 +235,7 @@ final class EngineFaultTests: XCTestCase {
   func testAPIErrorIsFailingNotNotRunning() {
     let real = """
       request returned 500 Internal Server Error for API route and version \
-      http://%2FUsers%2Fshawn%2F.docker%2Frun%2Fdocker.sock/v1.55/containers/json, \
+      http://%2FUsers%2Fyou%2F.docker%2Frun%2Fdocker.sock/v1.55/containers/json, \
       check if the server supports the requested API version
       """
     let fault = DockerControl.fault(from: result(real), cliInstalled: true)

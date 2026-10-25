@@ -63,6 +63,12 @@ enum MonitorAssembly {
       readings[entry.pid] = table.byPid[entry.pid]?.cpu ?? 0
     }
     for item in activity {
+      // A simulator's pid is its launchd_sim, which idles near zero; the row
+      // reports the whole device, so its sparkline has to plot that too.
+      if item.kind == .simulator, let pid = item.pids.first, let usage = item.usage {
+        readings[pid] = usage.cpu
+        continue
+      }
       for pid in item.pids { readings[pid] = table.byPid[pid]?.cpu ?? 0 }
     }
     return readings

@@ -1,6 +1,9 @@
-# CLAUDE.md
+# AGENTS.md
 
-Guidance for Claude Code working in this repository.
+Guidance for coding agents (Claude Code, Codex, Cursor, …) working in this
+repository. This is the only agent-instruction file: don't add a `CLAUDE.md`
+beside it — Claude Code reads `AGENTS.md` only when no `CLAUDE.md` exists, so
+one would silently replace this file for it.
 
 ## What this is
 
@@ -37,7 +40,9 @@ found:
 | Probe | Answers |
 |---|---|
 | `--print-groups` | the exact sections/rows the panel would show (attribution end-to-end) |
-| `--print-activity` | live Docker / Apple Containers / MCP detection |
+| `--print-activity` | live Docker / Apple Containers / Simulators / MCP detection, with usage |
+| `--print-memory` | RAM / swap glance, pressure + menu bar tint, disk free — live, then fixtures |
+| `--render-fixture-simulators <dir>` | the Simulators section at 340 and 440 pt, no device needed |
 | `--print-docker` / `--print-apple` | engine state + reclaimable space (read-only, never prunes) |
 | `--print-cmux` | whether workspace grouping can work, and why not |
 | `--probe-anchor` | where the panel landed vs its menu bar icon |
@@ -237,8 +242,8 @@ Two unrelated kinds of "logs" live in this app; don't confuse them.
   work calls `nonisolated static` functions that take and return values, never
   `self`, then hops back. Any closure that AppKit, Combine or a `Timer` calls
   must either be `@Sendable` and hop to main, or be on main by construction
-  (`RunLoop.main` timers wrap their body in `MainActor.assumeIsolated`; sinks
-  `receive(on: RunLoop.main)`). Under Swift 6 a main-actor closure called from
+  (`RunLoop.main` timers and `DispatchSource` handlers on `.main` wrap their
+  body in `MainActor.assumeIsolated`; sinks `receive(on: RunLoop.main)`). Under Swift 6 a main-actor closure called from
   another thread **traps**, and in a menu bar app a trap looks like the icon
   vanishing. `nonisolated(unsafe)` only with a comment proving the ordering.
 - Every external tool is optional. A missing CLI, a stopped daemon, or a refused

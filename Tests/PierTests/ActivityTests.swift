@@ -65,11 +65,11 @@ final class ActivityTests: XCTestCase {
   func testMCPEntriesLabelGroupAndAttribute() {
     // Two mcp servers under a claude ancestor, one standalone, one root.
     let ps = """
-        101 shawn /opt/homebrew/bin/node /Users/s/x/chrome-devtools-mcp/build/index.js
-        102 shawn /opt/homebrew/bin/node /Users/s/y/chrome-devtools-mcp/build/index.js
-        103 shawn npm exec @modelcontextprotocol/server-github
+        101 dev /opt/homebrew/bin/node /Users/s/x/chrome-devtools-mcp/build/index.js
+        102 dev /opt/homebrew/bin/node /Users/s/y/chrome-devtools-mcp/build/index.js
+        103 dev npm exec @modelcontextprotocol/server-github
         104 root /usr/libexec/mcp-daemon
-        200 shawn ps -axo pid=,user=,command=
+        200 dev ps -axo pid=,user=,command=
       """
     let t = table([
       (101, 50, "node"), (102, 50, "node"), (50, 1, "claude"),
@@ -172,7 +172,7 @@ final class ActivityTests: XCTestCase {
 
     // The chip is the umbrella over both engines.
     XCTAssertEqual(PierFilter.containers.label, "Containers")
-    XCTAssertEqual(PierFilter.containers.activityKinds, [.docker, .apple])
+    XCTAssertEqual(PierFilter.containers.activityKinds, [.docker, .apple, .simulator])
   }
 }
 
@@ -191,7 +191,7 @@ final class StoppedContainerTests: XCTestCase {
 
   func testParsesStoppedDockerContainers() {
     let out = """
-      hermosa_mcp_server\thrermosa-server-mcp-server\tExited (0) 3 hours ago\t
+      acme_api\tacme-api\tExited (0) 3 hours ago\t
       data_redis\tredis:8-alpine\tExited (0) 3 hours ago\t
       data_mongo\tmongo:7.0.34\tExited (0) 3 hours ago\t
       data_postgres\tpostgres:16-alpine\tUp 4 minutes\t0.0.0.0:5432->5432/tcp
@@ -200,7 +200,7 @@ final class StoppedContainerTests: XCTestCase {
     XCTAssertEqual(entries.count, 4)
     XCTAssertEqual(
       entries.filter { !$0.isRunning }.map(\.name),
-      ["hermosa_mcp_server", "data_redis", "data_mongo"])
+      ["acme_api", "data_redis", "data_mongo"])
     let running = entries.first { $0.isRunning }
     XCTAssertEqual(running?.name, "data_postgres")
     XCTAssertEqual(running?.ports, [5432])

@@ -8,7 +8,7 @@ final class FilterTests: XCTestCase {
     attr: Attribution = .none
   ) -> PortEntry {
     PortEntry(
-      pid: pid, port: port, proto: proto, processName: name, user: "shawn",
+      pid: pid, port: port, proto: proto, processName: name, user: "dev",
       bindAddresses: ["127.0.0.1"], attribution: attr)
   }
 
@@ -47,8 +47,8 @@ final class FilterTests: XCTestCase {
   }
 
   func testScopeActivityKinds() {
-    XCTAssertEqual(PierFilter.all.activityKinds, [.docker, .apple, .mcp])
-    XCTAssertEqual(PierFilter.containers.activityKinds, [.docker, .apple])
+    XCTAssertEqual(PierFilter.all.activityKinds, [.docker, .apple, .simulator, .mcp])
+    XCTAssertEqual(PierFilter.containers.activityKinds, [.docker, .apple, .simulator])
     XCTAssertEqual(PierFilter.mcp.activityKinds, [.mcp])
     XCTAssertTrue(PierFilter.web.activityKinds.isEmpty)
     XCTAssertTrue(PierFilter.ports.activityKinds.isEmpty)

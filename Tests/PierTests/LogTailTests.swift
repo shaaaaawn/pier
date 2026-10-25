@@ -30,9 +30,9 @@ final class LogSourceTests: XCTestCase {
 
   func testCmuxSurfaceIsTheRouteToADevServersOutput() {
     var entry = PortEntry(
-      pid: 9122, port: 5173, proto: .tcp, processName: "node", user: "shawn",
+      pid: 9122, port: 5173, proto: .tcp, processName: "node", user: "dev",
       bindAddresses: ["127.0.0.1"],
-      attribution: .cmux(workspace: "Idle Screens", surface: "make dev", harness: nil))
+      attribution: .cmux(workspace: "Acme Web", surface: "make dev", harness: nil))
     entry.cmuxSurfaceRef = "surface:19"
     XCTAssertEqual(
       LogSource.resolve(port: entry), .cmuxSurface(ref: "surface:19", title: "make dev"))
@@ -48,7 +48,7 @@ final class LogSourceTests: XCTestCase {
 
   func testPlainDevServerSaysWhyItCannotBeTailed() {
     let entry = PortEntry(
-      pid: 10352, port: 5182, proto: .tcp, processName: "node", user: "shawn",
+      pid: 10352, port: 5182, proto: .tcp, processName: "node", user: "dev",
       bindAddresses: ["127.0.0.1"], attribution: .none)
     let source = LogSource.resolve(port: entry)
     XCTAssertFalse(source.isAvailable)

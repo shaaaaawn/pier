@@ -23,7 +23,7 @@ final class HarnessMatchTests: XCTestCase {
     // Chain: agy (self) <- CodexBar (launcher). Self wins.
     let table = ProcessTable.parse("69986 2161 agy\n2161 1 CodexBar")
     let entry = PortEntry(
-      pid: 69986, port: 58994, proto: .tcp, processName: "agy", user: "shawn",
+      pid: 69986, port: 58994, proto: .tcp, processName: "agy", user: "dev",
       bindAddresses: ["127.0.0.1"], attribution: .none)
     XCTAssertEqual(
       Attributor.attribute(entry: entry, table: table, cmux: nil),
@@ -35,7 +35,7 @@ final class HarnessMatchTests: XCTestCase {
   func testUnknownCodexBarChildFallsBackToTheLauncher() {
     let table = ProcessTable.parse("500 2161 some-helper\n2161 1 CodexBar")
     let entry = PortEntry(
-      pid: 500, port: 51000, proto: .tcp, processName: "some-helper", user: "shawn",
+      pid: 500, port: 51000, proto: .tcp, processName: "some-helper", user: "dev",
       bindAddresses: ["127.0.0.1"], attribution: .none)
     XCTAssertEqual(
       Attributor.attribute(entry: entry, table: table, cmux: nil), .harness("CodexBar"))
@@ -68,13 +68,13 @@ final class AttributionTests: XCTestCase {
     """
 
   let cmuxFixture = """
-    12.9\t1028612200\t22\tworkspace\tworkspace:4\twindow:1\tPersonal Agent
+    12.9\t1028612200\t22\tworkspace\tworkspace:4\twindow:1\tSide Project
     9.2\t559616400\t10\tsurface\tsurface:19\tpane:6\tKimi
     4.0\t320515680\t1\tprocess\t94683\tsurface:19\tkimi
     """
 
   private func entry(
-    pid: Int32 = 5584, port: Int = 3000, user: String = "shawn", name: String = "node"
+    pid: Int32 = 5584, port: Int = 3000, user: String = "dev", name: String = "node"
   ) -> PortEntry {
     PortEntry(
       pid: pid, port: port, proto: .tcp, processName: name, user: user,
@@ -94,11 +94,11 @@ final class AttributionTests: XCTestCase {
     let attribution = Attributor.attribute(entry: entry(), table: table, cmux: cmux)
     XCTAssertEqual(
       attribution,
-      .cmux(workspace: "Personal Agent", surface: "Kimi", harness: "Kimi")
+      .cmux(workspace: "Side Project", surface: "Kimi", harness: "Kimi")
     )
     // Harness label matches the surface title, so it is not duplicated.
-    XCTAssertEqual(attribution.badgeLabel, "cmux · Personal Agent · Kimi")
-    XCTAssertEqual(attribution.groupTitle, "cmux · Personal Agent")
+    XCTAssertEqual(attribution.badgeLabel, "cmux · Side Project · Kimi")
+    XCTAssertEqual(attribution.groupTitle, "cmux · Side Project")
   }
 
   func testCmuxAttributionWithDifferentHarnessAppended() {
@@ -192,8 +192,8 @@ final class SystemBinaryTests: XCTestCase {
 
   func testUserBinariesAreNotSystem() {
     let mine = [
-      "/opt/homebrew/bin/node /Users/shawn/code/app/server.js",
-      "/Users/shawn/.nvm/versions/node/v24.16.0/bin/node",
+      "/opt/homebrew/bin/node /Users/you/code/app/server.js",
+      "/Users/you/.nvm/versions/node/v24.16.0/bin/node",
       "/Applications/Arc.app/Contents/Frameworks/ArcCore.framework/Helpers/Browser",
       "/usr/local/bin/container",
       // /usr/bin is user-invocable (python3, ruby) — a script there may well be

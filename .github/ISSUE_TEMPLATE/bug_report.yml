@@ -1,0 +1,94 @@
+name: Bug report
+description: Something in Pier behaves wrongly, crashes, or shows the wrong thing.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!WARNING]
+        > **Redact before you paste.** This issue is public. Pier's probes and its log list
+        > every process, port, container and agent session on your machine. Command lines
+        > routinely contain API keys, tokens and passwords (`--api-key=…`, `TOKEN=…`),
+        > and paths contain your username and project names.
+        >
+        > Before submitting, replace secrets, command lines, home-directory paths, hostnames
+        > and project names you don't want public with placeholders such as `<redacted>`.
+        > Paste only the lines that show the problem, not the whole output.
+
+        Security vulnerabilities do **not** belong here — see [SECURITY.md](https://github.com/shaaaaawn/pier/blob/main/SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what Pier did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start a dev server with …
+        2. Open the Pier panel
+        3. …
+    validations:
+      required: false
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      description: Output of `sw_vers -productVersion` (and Intel or Apple silicon).
+      placeholder: 15.5, Apple silicon
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Pier commit
+      description: Output of `git rev-parse --short HEAD` in the checkout you built from.
+      placeholder: a1b2c3d
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Ports / attribution
+        - Docker
+        - Apple containers
+        - MCP servers
+        - cmux grouping
+        - Preview / logs
+        - Menu bar icon / panel placement
+        - Other
+    validations:
+      required: false
+  - type: textarea
+    id: probe-output
+    attributes:
+      label: Relevant probe output (redacted)
+      description: |
+        Pier has a read-only CLI probe per subsystem that runs the real code and prints
+        what it found. From your checkout, run `swift build`, then the probe for the area
+        you're reporting:
+
+        - `.build/debug/Pier --print-groups` — the sections and rows the panel would show
+        - `.build/debug/Pier --print-activity` — Docker, Apple container and MCP detection
+        - `.build/debug/Pier --print-docker` or `--print-apple` — container engine state
+        - `.build/debug/Pier --print-cmux` — whether cmux workspace grouping can work
+        - `.build/debug/Pier --print-menubar` — menu bar space per display
+        - `.build/debug/Pier --probe-statusitem` — a missing or misplaced menu bar icon
+
+        Pier's own log (`~/Library/Logs/Pier/pier.log`, or `make applog`) can help too;
+        it carries the same risk. **Redact command lines, paths and tokens.**
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots are welcome — crop or blur anything private first.
+    validations:
+      required: false

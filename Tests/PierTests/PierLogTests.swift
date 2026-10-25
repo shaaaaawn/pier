@@ -61,7 +61,7 @@ final class PierLogTests: XCTestCase {
   func testLogsGoToTheDocumentedLocation() {
     XCTAssertTrue(
       PierLog.fileURL.path.hasSuffix("Library/Logs/Pier/pier.log"),
-      "README and CLAUDE.md both point at ~/Library/Logs/Pier/pier.log — got \(PierLog.fileURL.path)"
+      "README and AGENTS.md both point at ~/Library/Logs/Pier/pier.log — got \(PierLog.fileURL.path)"
     )
   }
 }

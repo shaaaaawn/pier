@@ -66,7 +66,7 @@ extension PortMonitor {
   /// is down (non-zero exit → skipped below).
   nonisolated static func collectActivity(
     dockerPath: String?, containerPath: String?, table: ProcessTable, cmux: CmuxSnapshot?,
-    commandsOutput: String? = nil
+    commandsOutput: String? = nil, commands: [Int32: String]? = nil
   ) -> (
     entries: [ActivityEntry], dockerState: EngineState, dockerFault: DockerControl.Fault?,
     appleState: EngineState
@@ -100,6 +100,9 @@ extension PortMonitor {
       commandsOutput
       ?? ProcessRunner.run("/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)?.stdout ?? ""
     activity += ActivityParser.mcpEntries(fullPS: fullPS, table: table, cmux: cmux)
+    // Free: read off the process table and command lines already in hand.
+    activity += SimulatorParser.entries(
+      table: table, commands: commands ?? parseCommands(fullPS))
     return (
       entries: activity, dockerState: dockerState, dockerFault: dockerFault,
       appleState: appleState
@@ -109,8 +112,10 @@ extension PortMonitor {
   /// `Pier --print-activity`: one synchronous collection pass, printed as
   /// text. Lets the detectors be verified live without opening the panel.
   nonisolated static func printActivitySnapshot() {
+    // Same columns as a live refresh, so rows carry the usage the panel shows.
     let psOut =
-      ProcessRunner.run("/bin/ps", ["-axo", "pid=,ppid=,ucomm="], timeout: 5)?.stdout ?? ""
+      ProcessRunner.run("/bin/ps", ["-axo", "pid=,ppid=,%cpu=,rss=,ucomm="], timeout: 5)?.stdout
+      ?? ""
     let snapshot = collectActivity(
       dockerPath: resolveBinary(
         "docker", candidates: ["/usr/local/bin/docker", "/opt/homebrew/bin/docker"]),
@@ -118,14 +123,15 @@ extension PortMonitor {
         "container", candidates: ["/usr/local/bin/container", "/opt/homebrew/bin/container"]),
       table: ProcessTable.parse(psOut),
       cmux: nil)
-    for kind in [ActivityKind.docker, .apple, .mcp] {
+    for kind in [ActivityKind.docker, .apple, .simulator, .mcp] {
       let entries = snapshot.entries.filter { $0.kind == kind }
       print("\(kind.sectionTitle): \(entries.isEmpty ? "(none)" : "")")
       for e in entries {
         let count = e.count > 1 ? " ×\(e.count)" : ""
         let ports = e.ports.isEmpty ? "" : " → \(e.ports.map(String.init).joined(separator: ","))"
         let badge = e.attribution == .none ? "" : "  [\(e.attribution.badgeLabel)]"
-        print("  • \(e.name)\(count)\(ports)\(badge)")
+        let usage = e.usage.map { "  (\($0.memoryLabel), \($0.cpuLabel) CPU)" } ?? ""
+        print("  • \(e.name)\(count)\(ports)\(badge)\(usage)")
         if !e.detail.isEmpty { print("      \(e.detail)") }
       }
     }

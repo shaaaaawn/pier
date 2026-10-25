@@ -6,7 +6,7 @@ as a source build.
 ## Requirements
 
 - macOS 13 or later
-- Xcode 16 or later, including the Command Line Tools
+- Xcode 26 or later, including the Command Line Tools
 - Git and Make
 
 Pier has no third-party Swift dependencies. These integrations are optional:

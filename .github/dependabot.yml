@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # Pier has no third-party Swift dependencies; the only pinned versions are
+  # the actions in .github/workflows.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
