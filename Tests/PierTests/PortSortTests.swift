@@ -9,7 +9,7 @@ final class PortSortTests: XCTestCase {
     cpu: Double = 0, bind: String = "127.0.0.1"
   ) -> PortEntry {
     PortEntry(
-      pid: pid, port: port, proto: .tcp, processName: name, user: "shawn",
+      pid: pid, port: port, proto: .tcp, processName: name, user: "dev",
       bindAddresses: [bind], attribution: actor, usage: Usage(cpu: cpu, rssKB: 0))
   }
 

@@ -9,7 +9,7 @@ final class PreviewURLTests: XCTestCase {
     binds: [String]
   ) -> PortEntry {
     PortEntry(
-      pid: 1234, port: port, proto: proto, processName: "node", user: "shawn",
+      pid: 1234, port: port, proto: proto, processName: "node", user: "dev",
       bindAddresses: binds, attribution: .none
     )
   }

@@ -28,7 +28,7 @@ final class CommandPathAttributionTests: XCTestCase {
   /// paths would label every dev server "VS Code" or "Pi".
   func testGenericTokensNeverMatchInsidePaths() {
     let innocent = [
-      "node /Users/you/code/idle-mono/idle-screens/node_modules/.bin/vite --port 5182",
+      "node /Users/you/code/monorepo/web/node_modules/.bin/vite --port 5182",
       "python3 /Users/you/code/pi-workflow/server.py",
       "node /Users/you/code/amp-experiments/server.js",
       "/Users/you/code/zed-notes/bin/serve",
@@ -57,7 +57,7 @@ final class CommandPathAttributionTests: XCTestCase {
       300: "node /Users/s/.npm/_npx/x/node_modules/kimi-code/dist/cli.js --port 4000"
     ]
     let entry = PortEntry(
-      pid: 300, port: 4000, proto: .tcp, processName: "node", user: "shawn",
+      pid: 300, port: 4000, proto: .tcp, processName: "node", user: "dev",
       bindAddresses: ["127.0.0.1"], attribution: .none)
     XCTAssertEqual(
       Attributor.attribute(entry: entry, table: table, cmux: nil, commands: commands),
@@ -69,7 +69,7 @@ final class CommandPathAttributionTests: XCTestCase {
   func testUnknownProcessStaysUnattributed() {
     let table = ProcessTable.parse("300 200 node\n200 1 bash")
     let entry = PortEntry(
-      pid: 300, port: 4000, proto: .tcp, processName: "node", user: "shawn",
+      pid: 300, port: 4000, proto: .tcp, processName: "node", user: "dev",
       bindAddresses: ["127.0.0.1"], attribution: .none)
     XCTAssertEqual(Attributor.attribute(entry: entry, table: table, cmux: nil), Attribution.none)
   }
@@ -83,7 +83,7 @@ final class CommandPathAttributionTests: XCTestCase {
       300: "node /Users/s/.local/share/opencode/bin/opencode.js",
     ]
     let entry = PortEntry(
-      pid: 400, port: 5000, proto: .tcp, processName: "node", user: "shawn",
+      pid: 400, port: 5000, proto: .tcp, processName: "node", user: "dev",
       bindAddresses: ["127.0.0.1"], attribution: .none)
     XCTAssertEqual(
       Attributor.attribute(entry: entry, table: table, cmux: nil, commands: commands),
@@ -107,7 +107,7 @@ final class CmuxAccessTests: XCTestCase {
     XCTAssertTrue(
       CmuxAccess.isAccessDenied(
         "Error: ERROR: Access denied - only processes started inside cmux can connect"))
-    XCTAssertFalse(CmuxAccess.isAccessDenied("workspace:1\tIdle Screens"))
+    XCTAssertFalse(CmuxAccess.isAccessDenied("workspace:1\tAcme Web"))
   }
 
   func testStatusClassification() {

@@ -13,23 +13,23 @@ final class RowBadgeTests: XCTestCase {
 
   func testCmuxKeepsOnlyTheSurface() {
     let attribution = Attribution.cmux(
-      workspace: "Idle Screens", surface: "make dev screens", harness: nil)
-    XCTAssertEqual(attribution.groupTitle, "cmux · Idle Screens")
+      workspace: "Acme Web", surface: "make dev web", harness: nil)
+    XCTAssertEqual(attribution.groupTitle, "cmux · Acme Web")
     // Header carries the workspace; the row adds which surface it came from.
     XCTAssertEqual(
-      attribution.rowBadge(inGroup: "cmux · Idle Screens"), "make dev screens")
+      attribution.rowBadge(inGroup: "cmux · Acme Web"), "make dev web")
   }
 
   func testCmuxKeepsSurfaceAndDistinctHarness() {
     let attribution = Attribution.cmux(
-      workspace: "Personal Agent", surface: "shell", harness: "Kimi")
-    XCTAssertEqual(attribution.rowBadge(inGroup: "cmux · Personal Agent"), "shell · Kimi")
+      workspace: "Side Project", surface: "shell", harness: "Kimi")
+    XCTAssertEqual(attribution.rowBadge(inGroup: "cmux · Side Project"), "shell · Kimi")
   }
 
   func testCmuxSurfaceEqualToHarnessIsNotRepeated() {
     let attribution = Attribution.cmux(
-      workspace: "Personal Agent", surface: "Kimi", harness: "Kimi")
-    XCTAssertEqual(attribution.rowBadge(inGroup: "cmux · Personal Agent"), "Kimi")
+      workspace: "Side Project", surface: "Kimi", harness: "Kimi")
+    XCTAssertEqual(attribution.rowBadge(inGroup: "cmux · Side Project"), "Kimi")
   }
 
   func testGenericBucketsDropTheirBadge() {

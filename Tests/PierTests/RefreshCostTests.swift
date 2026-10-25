@@ -13,11 +13,11 @@ final class RefreshCostTests: XCTestCase {
   let combined = """
     COMMAND     PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
     mDNSRespo   123 _mdnsresponder 6u IPv4 0x1      0t0  UDP *:5353
-    node      90220 shawn   22u  IPv6 0x111         0t0  TCP [::1]:3000 (LISTEN)
-    node      90220 shawn   23u  IPv4 0x222         0t0  TCP 127.0.0.1:3000 (LISTEN)
-    node      90220 shawn   30u  IPv4 0x2           0t0  UDP 192.168.1.5:53122->8.8.8.8:53
-    node      90220 shawn   31u  IPv4 0x3           0t0  UDP *:5173
-    python3   73101 shawn    3u  IPv4 0xdef456      0t0  TCP *:8931 (LISTEN)
+    node      90220 dev   22u  IPv6 0x111         0t0  TCP [::1]:3000 (LISTEN)
+    node      90220 dev   23u  IPv4 0x222         0t0  TCP 127.0.0.1:3000 (LISTEN)
+    node      90220 dev   30u  IPv4 0x2           0t0  UDP 192.168.1.5:53122->8.8.8.8:53
+    node      90220 dev   31u  IPv4 0x3           0t0  UDP *:5173
+    python3   73101 dev    3u  IPv4 0xdef456      0t0  TCP *:8931 (LISTEN)
     """
 
   func testProtocolIsReadPerRowFromTheNodeColumn() {
@@ -42,8 +42,8 @@ final class RefreshCostTests: XCTestCase {
   func testSamePortDifferentProtocolStaysTwoEntries() {
     let both = """
       COMMAND  PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
-      thing    500 shawn 4u IPv4 0x1 0t0 TCP 127.0.0.1:3000 (LISTEN)
-      thing    500 shawn 5u IPv4 0x2 0t0 UDP 127.0.0.1:3000
+      thing    500 dev 4u IPv4 0x1 0t0 TCP 127.0.0.1:3000 (LISTEN)
+      thing    500 dev 5u IPv4 0x2 0t0 UDP 127.0.0.1:3000
       """
     let entries = PortMonitor.buildEntries(sockets: both)
     XCTAssertEqual(Set(entries.map(\.proto)), [.tcp, .udp])
@@ -83,10 +83,10 @@ final class RefreshCostTests: XCTestCase {
   /// contain "mcp" and an upper-case one that only `lowercased()` would catch.
   func testPrefilterPassesEverythingTheFullCheckAccepts() {
     let accepted = [
-      "4100 shawn node /Users/shawn/.npm/_npx/x/chrome-devtools-mcp/build/index.js",
-      "4101 shawn npx @modelcontextprotocol/server-github",
-      "4102 shawn /usr/local/bin/MCP-Proxy --stdio",
-      "4103 shawn uvx Blender-MCP",
+      "4100 dev node /Users/you/.npm/_npx/x/chrome-devtools-mcp/build/index.js",
+      "4101 dev npx @modelcontextprotocol/server-github",
+      "4102 dev /usr/local/bin/MCP-Proxy --stdio",
+      "4103 dev uvx Blender-MCP",
     ]
     for line in accepted {
       let command = line.split(separator: " ").dropFirst(2).joined(separator: " ")
@@ -97,15 +97,15 @@ final class RefreshCostTests: XCTestCase {
   }
 
   func testPrefilterRejectsLinesWithNoNeedle() {
-    for line in ["1 root /sbin/launchd", "90220 shawn node vite.js --port 5173", "77 shawn mc ps"] {
+    for line in ["1 root /sbin/launchd", "90220 dev node vite.js --port 5173", "77 dev mc ps"] {
       XCTAssertFalse(ActivityParser.mightMentionMCP(Substring(line)), line)
     }
   }
 
   /// Non-ASCII bytes (UTF-8 multibyte) can never be folded onto an ASCII letter.
   func testPrefilterIgnoresNonASCIIBytes() {
-    XCTAssertFalse(ActivityParser.mightMentionMCP("5 shawn ｍｃｐ-server"))  // fullwidth
-    XCTAssertTrue(ActivityParser.mightMentionMCP("5 shawn café-mcp"))
+    XCTAssertFalse(ActivityParser.mightMentionMCP("5 dev ｍｃｐ-server"))  // fullwidth
+    XCTAssertTrue(ActivityParser.mightMentionMCP("5 dev café-mcp"))
   }
 
   /// Property check over every prefix-split of a long mixed line: wherever the
@@ -118,7 +118,7 @@ final class RefreshCostTests: XCTestCase {
     for _ in 0..<500 {
       let command = (0..<4).map { _ in words.randomElement(using: &generator)! }.joined(
         separator: " ")
-      let line = "123 shawn \(command)"
+      let line = "123 dev \(command)"
       if ActivityParser.isMCPCommand(command.lowercased()) {
         XCTAssertTrue(ActivityParser.mightMentionMCP(Substring(line)), line)
       }
@@ -136,13 +136,13 @@ final class RefreshCostTests: XCTestCase {
 
   func testCommandLineMatchesTheOldSplitAndJoin() {
     let lines: [Substring] = [
-      "  4100 shawn node /a/b.js --port 5173",
-      "4100 shawn node  /a/b.js",  // doubled space inside the command
-      "4100 shawn\tnode\t/a/b.js",  // tabs
-      "4100 shawn node /a/b.js   ",  // trailing spaces
-      "4100   shawn    node",  // runs between columns
-      "4100 shawn",  // no command
-      "abc shawn node",  // non-numeric pid
+      "  4100 dev node /a/b.js --port 5173",
+      "4100 dev node  /a/b.js",  // doubled space inside the command
+      "4100 dev\tnode\t/a/b.js",  // tabs
+      "4100 dev node /a/b.js   ",  // trailing spaces
+      "4100   dev    node",  // runs between columns
+      "4100 dev",  // no command
+      "abc dev node",  // non-numeric pid
       "",
       "   ",
       "-1 root weird",
@@ -168,7 +168,7 @@ final class RefreshCostTests: XCTestCase {
 
   func testCacheReturnsWhatTheDirectCallReturns() {
     let commands: [Int32: String] = [
-      10: "/opt/homebrew/bin/claude", 11: "node /Users/shawn/app/vite.js", 12: "",
+      10: "/opt/homebrew/bin/claude", 11: "node /Users/you/app/vite.js", 12: "",
     ]
     let cache = CommandLabelCache(commands)
     for pid: Int32 in [10, 11, 12, 99] {

@@ -12,8 +12,8 @@ import XCTest
 final class MonitorAssemblyTests: XCTestCase {
   private let lsof = """
     COMMAND    PID  USER   FD   TYPE  DEVICE SIZE/OFF NODE NAME
-    node      4100 shawn   23u  IPv4  0x1       0t0  TCP 127.0.0.1:5173 (LISTEN)
-    workerd   4200 shawn   19u  IPv4  0x2       0t0  TCP 127.0.0.1:8787 (LISTEN)
+    node      4100 dev   23u  IPv4  0x1       0t0  TCP 127.0.0.1:5173 (LISTEN)
+    workerd   4200 dev   19u  IPv4  0x2       0t0  TCP 127.0.0.1:8787 (LISTEN)
     """
 
   /// pid ppid %cpu rss ucomm — 4100's parent is 3000 (claude), 4200 is orphaned.
@@ -24,9 +24,9 @@ final class MonitorAssemblyTests: XCTestCase {
     """
 
   private let psCommands = """
-    3000 shawn /opt/homebrew/bin/claude
-    4100 shawn node /Users/shawn/app/vite.js
-    4200 shawn workerd serve
+    3000 dev /opt/homebrew/bin/claude
+    4100 dev node /Users/you/app/vite.js
+    4200 dev workerd serve
     """
 
   private func probe(cmux: CmuxSnapshot? = nil) -> ProbeOutput {
@@ -37,7 +37,7 @@ final class MonitorAssemblyTests: XCTestCase {
   func testAssemblesEntriesFromRawOutput() {
     let result = MonitorAssembly.ports(from: probe())
     XCTAssertEqual(result.entries.map(\.port).sorted(), [5173, 8787])
-    XCTAssertEqual(result.commands[4100], "node /Users/shawn/app/vite.js")
+    XCTAssertEqual(result.commands[4100], "node /Users/you/app/vite.js")
   }
 
   /// The wiring that was previously only exercisable against a live machine:

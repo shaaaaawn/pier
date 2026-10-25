@@ -6,7 +6,7 @@ final class CmuxSnapshotTests: XCTestCase {
   /// Realistic shape: a workspace, a surface whose parent is a pane that has
   /// no row of its own, and a process chain node -> bash -> kimi -> surface.
   let tsvWithoutPaneRow = """
-    12.9\t1028612200\t22\tworkspace\tworkspace:4\twindow:1\tPersonal Agent
+    12.9\t1028612200\t22\tworkspace\tworkspace:4\twindow:1\tSide Project
     9.2\t559616400\t10\tsurface\tsurface:19\tpane:6\tKimi
     4.0\t320515680\t1\tprocess\t94683\tsurface:19\tkimi
     0.0\t1261856\t1\tprocess\t5583\t94683\tbash
@@ -14,7 +14,7 @@ final class CmuxSnapshotTests: XCTestCase {
     """
 
   let tsvWithPaneRow = """
-    12.9\t1028612200\t22\tworkspace\tworkspace:4\twindow:1\tPersonal Agent
+    12.9\t1028612200\t22\tworkspace\tworkspace:4\twindow:1\tSide Project
     3.3\t100\t1\tpane\tpane:6\tworkspace:4\t
     9.2\t559616400\t10\tsurface\tsurface:19\tpane:6\tKimi
     4.0\t320515680\t1\tprocess\t94683\tsurface:19\tkimi
@@ -25,7 +25,7 @@ final class CmuxSnapshotTests: XCTestCase {
     let snapshot = CmuxSnapshot.parse(tsvWithPaneRow)
     let hit = snapshot.attribution(chain: [5584])
     XCTAssertEqual(hit?.surface, "Kimi")
-    XCTAssertEqual(hit?.workspace, "Personal Agent")
+    XCTAssertEqual(hit?.workspace, "Side Project")
   }
 
   func testWorkspaceFallbackWhenPaneRowMissing() {
@@ -33,7 +33,7 @@ final class CmuxSnapshotTests: XCTestCase {
     let snapshot = CmuxSnapshot.parse(tsvWithoutPaneRow)
     let hit = snapshot.attribution(chain: [5584])
     XCTAssertEqual(hit?.surface, "Kimi")
-    XCTAssertEqual(hit?.workspace, "Personal Agent")
+    XCTAssertEqual(hit?.workspace, "Side Project")
   }
 
   func testAncestorPidInChainMatches() {
