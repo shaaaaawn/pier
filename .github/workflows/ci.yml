@@ -31,7 +31,8 @@ permissions:
 jobs:
   check:
     name: lint · build · test
-    runs-on: macos-15
+    # macos-26 has been GA since 2026-02; its default Xcode is 26.6.
+    runs-on: macos-26
     # The whole job takes ~50s (measured). A hang would otherwise bill until
     # the 6h default cap.
     timeout-minutes: 20
