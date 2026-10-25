@@ -1,0 +1,269 @@
+import Darwin
+import Foundation
+import SwiftUI
+
+// RAM vs swap at a glance, read the way Activity Monitor reads it.
+//
+// Every choice below came from reading how the established monitors do this
+// (Stats, MenuMeters, eul) and then checking it on a real machine:
+//
+// - **In-process, no spawns.** One `host_statistics64(HOST_VM_INFO64)` call plus
+//   two sysctls costs ~3 µs. Stats and MenuMeters both work this way; eul shells
+//   out to `top`/`vm_stat`, which is the pattern to avoid. For scale, one port
+//   refresh spawns `lsof`/`ps` for ~250 ms of CPU — memory is effectively free.
+// - **The host port is fetched once.** `mach_host_self()` adds a send-right
+//   reference on every call; measured uncached, 1,000 samples took the count
+//   from 2 to 1,002. At one sample every 2 s that leaks ~43k references a day.
+// - **Activity Monitor's definition of "Memory Used":** App (internal −
+//   purgeable) + Wired + Compressed. Stats sums the page queues instead
+//   (active + inactive + speculative + wired + compressed − purgeable −
+//   external) and gets the same 27.58 GB on the dev machine; this form says
+//   what it means.
+// - **Kernel pages.** The counts are in `vm_kernel_page_size`, which only
+//   differs from `vm_page_size` under Rosetta — exactly when using the wrong one
+//   would quietly scale every number by 4×.
+
+/// Activity Monitor's green / yellow / red. Driven by the kernel's own verdict
+/// (`kern.memorystatus_vm_pressure_level`), **not** by percent used: Apple's
+/// guidance is that high Memory Used is normal, and a bar that turned red at
+/// 86% would be red most of the day on a healthy Mac.
+enum MemoryPressure: Int, Equatable {
+  case normal = 1
+  case warning = 2
+  case critical = 4
+
+  /// Unknown levels read as normal rather than alarming.
+  init(sysctlLevel: Int32) {
+    self = MemoryPressure(rawValue: Int(sysctlLevel)) ?? .normal
+  }
+
+  var label: String {
+    switch self {
+    case .normal: return "Normal"
+    case .warning: return "Warning"
+    case .critical: return "Critical"
+    }
+  }
+
+  var tint: Color {
+    switch self {
+    case .normal: return .green
+    case .warning: return .yellow
+    case .critical: return .red
+    }
+  }
+}
+
+/// Raw page counts from `vm_statistics64`, kept separate so the arithmetic is
+/// testable without a kernel.
+struct VMCounters: Equatable {
+  var internalPages: UInt64
+  var purgeablePages: UInt64
+  var wiredPages: UInt64
+  var compressedPages: UInt64
+  var externalPages: UInt64
+  /// Cumulative since boot — only its rate of change means anything.
+  var swapouts: UInt64
+}
+
+struct MemorySnapshot: Equatable {
+  var total: UInt64
+  var app: UInt64
+  var wired: UInt64
+  var compressed: UInt64
+  /// File-backed pages the system can drop instantly. Not part of "used".
+  var cached: UInt64
+  var swapUsed: UInt64
+  var swapTotal: UInt64
+  var pressure: MemoryPressure
+  /// Pages written to swap per second since the previous sample. nil until
+  /// there is a baseline to measure against.
+  var swapoutsPerSecond: Double?
+
+  var used: UInt64 { app + wired + compressed }
+
+  /// Paging *right now* is what hurts; swap *used* can sit high for hours after
+  /// the pressure that caused it has gone.
+  var isPaging: Bool { (swapoutsPerSecond ?? 0) > 0 }
+
+  /// Everything the glance or its tooltip shows, at the precision it shows it.
+  /// Publishing only when this changes keeps a steady machine from redrawing
+  /// anything at all.
+  var displayKey: [Int] {
+    let tenthGB = { (b: UInt64) in Int((Double(b) / MemoryFormat.gigabyte * 10).rounded()) }
+    return [
+      tenthGB(total), tenthGB(app), tenthGB(wired), tenthGB(compressed), tenthGB(cached),
+      Int((Double(swapUsed) / MemoryFormat.megabyte).rounded()), pressure.rawValue,
+      Int((swapoutsPerSecond ?? -1).rounded()),
+    ]
+  }
+}
+
+enum MemoryMath {
+  static func snapshot(
+    counters c: VMCounters, pageSize: UInt64, total: UInt64,
+    swapUsed: UInt64, swapTotal: UInt64, pressureLevel: Int32, swapoutsPerSecond: Double?
+  ) -> MemorySnapshot {
+    // Purgeable pages are counted inside internal ones but can be discarded
+    // without paging, so Activity Monitor leaves them out of App Memory. The
+    // subtraction is clamped: the two counts are read in one call but are not
+    // guaranteed consistent with each other.
+    let appPages = c.internalPages > c.purgeablePages ? c.internalPages - c.purgeablePages : 0
+    return MemorySnapshot(
+      total: total,
+      app: appPages * pageSize,
+      wired: c.wiredPages * pageSize,
+      compressed: c.compressedPages * pageSize,
+      cached: (c.externalPages + c.purgeablePages) * pageSize,
+      swapUsed: swapUsed,
+      swapTotal: swapTotal,
+      pressure: MemoryPressure(sysctlLevel: pressureLevel),
+      swapoutsPerSecond: swapoutsPerSecond)
+  }
+
+  /// Rate between two cumulative readings. nil when there's no earlier
+  /// reading, no time has passed, or the counter went backwards (a reset) —
+  /// every one of those would otherwise produce a confident, wrong number.
+  static func rate(
+    previous: (count: UInt64, at: TimeInterval)?, current: (count: UInt64, at: TimeInterval)
+  ) -> Double? {
+    guard let previous, current.at > previous.at, current.count >= previous.count else {
+      return nil
+    }
+    return Double(current.count - previous.count) / (current.at - previous.at)
+  }
+}
+
+enum MemoryFormat {
+  static let gigabyte = 1_073_741_824.0
+  static let megabyte = 1_048_576.0
+
+  /// "27.6" — one decimal, unit supplied by the caller.
+  static func gigabytes(_ bytes: UInt64) -> String {
+    String(format: "%.1f", Double(bytes) / gigabyte)
+  }
+
+  /// Total RAM reads as a whole number when it is one ("32", not "32.0").
+  static func totalGigabytes(_ bytes: UInt64) -> String {
+    let gb = Double(bytes) / gigabyte
+    return gb.rounded() == gb ? String(Int(gb)) : String(format: "%.1f", gb)
+  }
+
+  /// Swap is shown in absolute bytes, never as used/total: macOS grows swap on
+  /// demand, so the total is 0 until it's needed and a ratio would mean nothing.
+  static func swap(_ bytes: UInt64) -> String {
+    if bytes == 0 { return "0" }
+    let mb = Double(bytes) / megabyte
+    return mb < 1024 ? String(format: "%.0f MB", mb) : String(format: "%.1f GB", mb / 1024)
+  }
+}
+
+/// Samples memory while the panel is open and publishes only when something
+/// the glance would draw has changed.
+///
+/// Deliberately its own object rather than more state on `PortMonitor`: only
+/// `MemoryGlanceView` observes it, so a tick redraws one footer view instead of
+/// recomputing the whole panel's grouping and rows.
+final class MemoryMonitor: ObservableObject {
+  @Published private(set) var snapshot: MemorySnapshot?
+
+  /// Two seconds: Activity Monitor's default refresh, and at ~3 µs per sample
+  /// the interval is about legibility, not cost.
+  static let interval: TimeInterval = 2
+
+  private let host: mach_port_t
+  private let isFixed: Bool
+  private var timer: Timer?
+  private var baseline: (count: UInt64, at: TimeInterval)?
+
+  init() {
+    host = mach_host_self()
+    isFixed = false
+  }
+
+  /// Fixture renders: a fixed value, never sampled, so PNGs stay reproducible.
+  init(fixed: MemorySnapshot) {
+    host = mach_host_self()
+    isFixed = true
+    snapshot = fixed
+  }
+
+  deinit {
+    timer?.invalidate()
+    mach_port_deallocate(mach_task_self_, host)
+  }
+
+  /// Sample only while someone can see it. Nothing runs while the panel is
+  /// closed — not even the pressure sysctl.
+  func setActive(_ active: Bool) {
+    guard !isFixed else { return }
+    timer?.invalidate()
+    timer = nil
+    guard active else { return }
+    // A rate measured across the time the panel was closed would average the
+    // whole gap into one meaningless number. Start over.
+    baseline = nil
+    sample()
+    let timer = Timer(timeInterval: Self.interval, repeats: true) { [weak self] _ in
+      self?.sample()
+    }
+    timer.tolerance = Self.interval * 0.25
+    RunLoop.main.add(timer, forMode: .common)
+    self.timer = timer
+  }
+
+  func sample() {
+    guard let counters = readCounters() else { return }
+    let now = ProcessInfo.processInfo.systemUptime
+    let current = (count: counters.swapouts, at: now)
+    let rate = MemoryMath.rate(previous: baseline, current: current)
+    baseline = current
+
+    var swap = xsw_usage()
+    var swapSize = MemoryLayout<xsw_usage>.size
+    sysctlbyname("vm.swapusage", &swap, &swapSize, nil, 0)
+
+    var level: Int32 = 0
+    var levelSize = MemoryLayout<Int32>.size
+    sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &levelSize, nil, 0)
+
+    let next = MemoryMath.snapshot(
+      counters: counters, pageSize: UInt64(vm_kernel_page_size),
+      total: ProcessInfo.processInfo.physicalMemory,
+      swapUsed: swap.xsu_used, swapTotal: swap.xsu_total,
+      pressureLevel: level, swapoutsPerSecond: rate)
+    if snapshot?.displayKey != next.displayKey { snapshot = next }
+  }
+
+  private func readCounters() -> VMCounters? {
+    var stats = vm_statistics64()
+    var count = mach_msg_type_number_t(
+      MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
+    let result = withUnsafeMutablePointer(to: &stats) {
+      $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+        host_statistics64(host, HOST_VM_INFO64, $0, &count)
+      }
+    }
+    guard result == KERN_SUCCESS else { return nil }
+    return VMCounters(
+      internalPages: UInt64(stats.internal_page_count),
+      purgeablePages: UInt64(stats.purgeable_count),
+      wiredPages: UInt64(stats.wire_count),
+      compressedPages: UInt64(stats.compressor_page_count),
+      externalPages: UInt64(stats.external_page_count),
+      swapouts: stats.swapouts)
+  }
+}
+
+/// Optional, so a view tree that never injects one (every existing fixture
+/// render) draws exactly what it drew before.
+private struct MemoryMonitorKey: EnvironmentKey {
+  static let defaultValue: MemoryMonitor? = nil
+}
+
+extension EnvironmentValues {
+  var memoryMonitor: MemoryMonitor? {
+    get { self[MemoryMonitorKey.self] }
+    set { self[MemoryMonitorKey.self] = newValue }
+  }
+}
