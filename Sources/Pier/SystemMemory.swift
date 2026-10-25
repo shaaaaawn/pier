@@ -192,6 +192,11 @@ final class MemoryMonitor: ObservableObject {
   /// tick must not redraw the status item, and pressure must stay current while
   /// the panel is closed and nothing is sampling.
   @Published private(set) var pressure: MemoryPressure = .normal
+  /// Startup-volume free space. Disk changes slowly, so it's read on panel open
+  /// and then once a minute — not on the 2 s memory tick.
+  @Published private(set) var disk: DiskSnapshot?
+  static let diskInterval: TimeInterval = 60
+  private var lastDiskRead: TimeInterval?
 
   /// Two seconds: Activity Monitor's default refresh, and at ~3 µs per sample
   /// the interval is about legibility, not cost.
@@ -221,11 +226,12 @@ final class MemoryMonitor: ObservableObject {
   }
 
   /// Fixture renders: a fixed value, never sampled, so PNGs stay reproducible.
-  init(fixed: MemorySnapshot) {
+  init(fixed: MemorySnapshot, disk: DiskSnapshot? = nil) {
     host = mach_host_self()
     isFixed = true
     snapshot = fixed
     pressure = fixed.pressure
+    self.disk = disk
   }
 
   deinit {
@@ -244,6 +250,7 @@ final class MemoryMonitor: ObservableObject {
     // A rate measured across the time the panel was closed would average the
     // whole gap into one meaningless number. Start over.
     baseline = nil
+    lastDiskRead = nil
     sample()
     let timer = Timer(timeInterval: Self.interval, repeats: true) { [weak self] _ in
       self?.sample()
@@ -275,6 +282,21 @@ final class MemoryMonitor: ObservableObject {
       pressureLevel: level, swapoutsPerSecond: rate)
     if snapshot?.displayKey != next.displayKey { snapshot = next }
     updatePressure(next.pressure)
+    readDiskIfDue(now: now)
+  }
+
+  /// Off the main thread: Finder's "available" figure costs ~11.5 ms, and this
+  /// runs from the panel's main-thread timer.
+  private func readDiskIfDue(now: TimeInterval) {
+    if let last = lastDiskRead, now - last < Self.diskInterval { return }
+    lastDiskRead = now
+    DispatchQueue.global(qos: .utility).async { [weak self] in
+      let reading = DiskSpace.read()
+      DispatchQueue.main.async {
+        guard let self, self.disk?.displayKey != reading?.displayKey else { return }
+        self.disk = reading
+      }
+    }
   }
 
   /// Publishes only on a real change, so the menu bar isn't redrawn per sample.

@@ -175,6 +175,8 @@ struct PortListView: View {
     HStack(spacing: 8) {
       if let memoryMonitor {
         MemoryGlanceView(monitor: memoryMonitor)
+        DiskGlanceView(monitor: memoryMonitor)
+          .layoutPriority(-0.5)
       }
       // At the 340pt minimum the glance and "Updated" don't both fit. The
       // glance is the information; the refresh age is the part that yields —

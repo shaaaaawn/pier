@@ -88,3 +88,43 @@ extension MemoryFormat {
     return lines.joined(separator: "\n")
   }
 }
+
+/// Startup-disk free space, sitting right after the memory glance in the same
+/// footer row. Its own view with its own layout priority, so as the panel
+/// narrows the footer gives way in a deliberate order: "Updated" goes first,
+/// then this, and the memory glance never does — no wrapping, no extra height.
+struct DiskGlanceView: View {
+  @ObservedObject var monitor: MemoryMonitor
+
+  var body: some View {
+    if let disk = monitor.disk {
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: 3) {
+          Image(systemName: "internaldrive")
+          Text("\(DiskSpace.format(disk.free)) free")
+            .monospacedDigit()
+        }
+        .font(.system(size: 10))
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .help(MemoryFormat.diskTooltip(disk))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(MemoryFormat.diskTooltip(disk))
+        // Too narrow: drop out entirely rather than truncate to "89 G…".
+        Color.clear.frame(width: 0, height: 0)
+      }
+    }
+  }
+}
+
+extension MemoryFormat {
+  /// Finder's figure appears alongside, so Pier never looks like it disagrees
+  /// with Finder about how much space there is.
+  static func diskTooltip(_ d: DiskSnapshot) -> String {
+    var lines = ["Startup disk: \(DiskSpace.format(d.free)) free of \(DiskSpace.format(d.total))"]
+    if let available = d.availableIncludingPurgeable, available > d.free {
+      lines.append("\(DiskSpace.format(available)) available incl. purgeable (Finder's figure)")
+    }
+    return lines.joined(separator: "\n")
+  }
+}
