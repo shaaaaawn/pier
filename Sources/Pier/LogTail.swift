@@ -75,6 +75,8 @@ enum LogSource: Equatable {
     case .mcp:
       return .unavailable(
         reason: "MCP servers talk over stdio to their harness — no log to read")
+    case .simulator:
+      return .unavailable(reason: "simulator logs live in Console.app, under the device")
     }
   }
 
@@ -237,9 +239,11 @@ final class LogTailer: ObservableObject {
     toolPath: String, arguments: [String], environment: [String: String] = [:]
   ) {
     let source = self.source
-    DispatchQueue.global(qos: .userInitiated).async {
+    // Weak from the outermost closure: a weak capture only in the inner Task
+    // still let the dispatch block hold the tailer strongly for the whole run.
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
       let result = ProcessRunner.run(toolPath, arguments, timeout: 8, environment: environment)
-      Task { @MainActor [weak self] in
+      Task { @MainActor in
         guard let self, self.source == source else { return }
         guard let result else {
           self.state = .ended("could not run the CLI")

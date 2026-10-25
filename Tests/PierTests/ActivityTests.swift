@@ -171,7 +171,7 @@ final class ActivityTests: XCTestCase {
 
     // The chip is the umbrella over both engines.
     XCTAssertEqual(PierFilter.containers.label, "Containers")
-    XCTAssertEqual(PierFilter.containers.activityKinds, [.docker, .apple])
+    XCTAssertEqual(PierFilter.containers.activityKinds, [.docker, .apple, .simulator])
   }
 }
 

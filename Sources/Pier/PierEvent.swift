@@ -42,7 +42,12 @@ struct PierEvent: Identifiable, Equatable {
     var kindLabel: String {
       switch self {
       case .port: return "port"
-      case .container(let kind, _): return kind == .docker ? "Docker" : "container"
+      case .container(let kind, _):
+        switch kind {
+        case .docker: return "Docker"
+        case .simulator: return "simulator"
+        case .apple, .mcp: return "container"
+        }
       case .mcp: return "MCP server"
       }
     }

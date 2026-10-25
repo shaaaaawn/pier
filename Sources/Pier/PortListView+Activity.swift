@@ -57,6 +57,11 @@ extension PortListView {
           .padding(.trailing, 12)
           .padding(.top, 5)
       }
+      if group.kind == .simulator, !group.entries.isEmpty {
+        simulatorMenu(count: group.entries.count)
+          .padding(.trailing, 12)
+          .padding(.top, 5)
+      }
     }
   }
 
@@ -91,7 +96,7 @@ extension PortListView {
     switch kind {
     case .docker: return monitor.dockerState
     case .apple: return monitor.appleState
-    case .mcp: return nil
+    case .mcp, .simulator: return nil
     }
   }
 
@@ -174,6 +179,11 @@ extension PortListView {
         Text(verbatim: "→ " + entry.ports.map(String.init).joined(separator: ", "))
           .font(.system(size: 10, design: .monospaced))
       }
+      // Memory is why you'd shut a simulator down, so it gets the subline
+      // rather than hiding in the usage tooltip like other rows.
+      if entry.kind == .simulator, let usage = entry.usage {
+        Text(verbatim: "· \(usage.memoryLabel)")
+      }
     }
     .font(.system(size: 11))
     .foregroundStyle(.secondary)
@@ -213,7 +223,10 @@ extension PortListView {
           Image(systemName: "xmark.circle")
             .foregroundStyle(visible ? Color.red : Color.secondary)
         }
-        .help(entry.kind == .mcp ? "Kill process" : "Stop container")
+        .help(
+          entry.kind == .mcp
+            ? "Kill process"
+            : entry.kind == .simulator ? "Shut down simulator" : "Stop container")
       } else {
         // A stopped container's useful action is the opposite one.
         Button {

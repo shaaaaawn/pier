@@ -2,11 +2,13 @@ import Foundation
 
 /// Background activity that doesn't (necessarily) hold a listening port:
 /// Docker containers, Apple `container` containers, and MCP server processes
-/// (mostly stdio children of agent harnesses, invisible to lsof).
+/// (mostly stdio children of agent harnesses, invisible to lsof), and booted
+/// Xcode simulators.
 enum ActivityKind: String {
   case docker
   case apple
   case mcp
+  case simulator
 
   var sectionTitle: String {
     switch self {
@@ -16,6 +18,7 @@ enum ActivityKind: String {
     // Docker's containers were something else. Name the engine.
     case .apple: return "Apple Containers"
     case .mcp: return "MCP Servers"
+    case .simulator: return "Simulators"
     }
   }
 
@@ -25,6 +28,16 @@ enum ActivityKind: String {
     case .docker: return "shippingbox"
     case .apple: return "apple.logo"
     case .mcp: return "bolt.horizontal.circle"
+    case .simulator: return "iphone"
+    }
+  }
+
+  /// The verb on a row's stop button and its confirmation.
+  var stopVerb: String {
+    switch self {
+    case .mcp: return "Kill"
+    case .simulator: return "Shut Down"
+    case .docker, .apple: return "Stop"
     }
   }
 
@@ -34,7 +47,7 @@ enum ActivityKind: String {
   var iconName: String? {
     switch self {
     case .docker: return "docker"
-    case .apple, .mcp: return nil
+    case .apple, .mcp, .simulator: return nil
     }
   }
 }
@@ -58,6 +71,8 @@ struct ActivityEntry: Identifiable, Equatable {
   /// containers are listed so they can be started again — they're invisible to
   /// `docker ps` without `-a`, which is why an idle machine looked empty.
   var isRunning = true
+  /// Simulators only: the device `simctl` acts on.
+  var simulator: SimulatorRef?
 
   var id: String { "\(kind.rawValue):\(name):\(pids.first.map(String.init) ?? "-")" }
   var count: Int { max(pids.count, 1) }

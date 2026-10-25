@@ -258,8 +258,10 @@ enum PierFilter: String, CaseIterable, Identifiable {
   /// Activity kinds this scope shows.
   var activityKinds: [ActivityKind] {
     switch self {
-    case .all: return [.docker, .apple, .mcp]
-    case .containers: return [.docker, .apple]
+    case .all: return [.docker, .apple, .simulator, .mcp]
+    // Simulators sit with containers: the other heavyweight, start-and-forget
+    // guests that quietly hold gigabytes of RAM.
+    case .containers: return [.docker, .apple, .simulator]
     case .mcp: return [.mcp]
     case .web, .ports: return []
     }

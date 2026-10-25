@@ -11,6 +11,9 @@ enum DebugFlags {
       MemoryProbe.printMemory()
       exit(0)
     }
+    if let dir = value(after: "--render-fixture-simulators", in: args) {
+      MainActor.assumeIsolated { SimulatorFixture.render(to: dir) }
+    }
     if let dir = value(after: "--render-fixture-memory", in: args) {
       MainActor.assumeIsolated { MemoryProbe.renderFixtures(to: dir) }
     }

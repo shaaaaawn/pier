@@ -27,7 +27,7 @@ make check
 make build
 ```
 
-Pier requires macOS 13+ and Xcode 16+.
+Pier requires macOS 13+ and Xcode 26+.
 
 ## Make a change
 
