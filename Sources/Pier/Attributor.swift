@@ -228,9 +228,14 @@ enum Attributor {
   /// share the same ancestors — measured on a real machine, up to 616 chain
   /// links resolved to only 166 distinct pids — so each command line (some over
   /// 9,000 characters) should be lowercased and scanned once, not per port.
+  ///
+  /// `terminalInfo` reads a session leader's tty and directory (libproc in a
+  /// real refresh). Only called for ports whose nearest harness is Ghostty or
+  /// Terminal; when it can't say, the port keeps the plain terminal label.
   static func attribute(
     entry: PortEntry, table: ProcessTable, cmux: CmuxSnapshot?,
-    labels: CommandLabelCache
+    labels: CommandLabelCache,
+    terminalInfo: (Int32) -> TerminalSessionInfo? = { _ in nil }
   ) -> Attribution {
     let commands = labels.commands
     if entry.user == "root" || entry.port < 1024 { return .system }
@@ -257,6 +262,14 @@ enum Attributor {
 
     if let cmux, let hit = cmux.attribution(chain: chain.map(\.pid)) {
       return .cmux(workspace: hit.workspace, surface: hit.surface, harness: harness)
+    }
+    // A plain terminal is only the answer when nothing more specific was found
+    // first: Claude Code running in Ghostty stays "Claude Code".
+    if let harness, let leader = TerminalSessions.leader(in: chain),
+      harness == leader.app.label,
+      let session = TerminalSessions.session(app: leader.app, info: terminalInfo(leader.pid))
+    {
+      return .terminal(session)
     }
     if let harness { return .harness(harness) }
     return .none

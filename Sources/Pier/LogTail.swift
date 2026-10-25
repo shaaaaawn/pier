@@ -15,6 +15,9 @@ enum LogSource: Equatable {
   /// A cmux surface's scrollback: the actual terminal output of whatever runs
   /// there, which is how a cmux-launched dev server's logs become reachable.
   case cmuxSurface(ref: String, title: String)
+  /// A Terminal.app tab's scrollback, read through AppleScript by tty. Only
+  /// ever read while its log panel is open — never on the refresh tick.
+  case terminalTab(tty: String, title: String)
   case unavailable(reason: String)
 
   var isAvailable: Bool {
@@ -28,6 +31,7 @@ enum LogSource: Equatable {
     case .docker(let container): return "docker logs \(container)"
     case .appleContainer(let container): return "container logs \(container)"
     case .cmuxSurface(_, let title): return "cmux · \(title)"
+    case .terminalTab(_, let title): return "Terminal · \(title)"
     case .unavailable(let reason): return reason
     }
   }
@@ -59,6 +63,8 @@ enum LogSource: Equatable {
     case .cmuxSurface(let ref, _):
       // Password goes in the environment, never argv — see CmuxAccess.
       return ["read-screen", "--surface", ref, "--scrollback", "--lines", "\(Self.tailLines)"]
+    case .terminalTab(let tty, _):
+      return TerminalSessions.historyArguments(tty: tty)
     case .unavailable:
       return []
     }
@@ -80,16 +86,29 @@ enum LogSource: Equatable {
     }
   }
 
-  /// Listening ports: reachable only when the process runs in a cmux surface.
+  /// Listening ports: readable when the process runs in a cmux surface or a
+  /// Terminal.app tab.
   static func resolve(port entry: PortEntry) -> LogSource {
     if let ref = entry.cmuxSurfaceRef, case .cmux(_, let surface, _) = entry.attribution {
       return .cmuxSurface(ref: ref, title: surface)
+    }
+    if case .terminal(let session) = entry.attribution {
+      switch session.app {
+      case .terminal:
+        if let tty = session.tty { return .terminalTab(tty: tty, title: session.directory) }
+      case .ghostty:
+        // Ghostty 1.3's AppleScript names terminals but exposes no tty, pid or
+        // screen contents, and its scrollback actions write to the clipboard or
+        // paste into the tab. Nothing safe to read until that changes.
+        return .unavailable(reason: "Ghostty doesn't let other apps read a tab's output yet")
+      }
     }
     if case .system = entry.attribution {
       return .unavailable(reason: "system process — check Console.app")
     }
     return .unavailable(
-      reason: "output goes to the terminal that started it; run it in cmux to tail it here")
+      reason:
+        "output goes to the terminal that started it; run it in cmux or Terminal to tail it here")
   }
 }
 
@@ -247,6 +266,13 @@ final class LogTailer: ObservableObject {
         guard let self, self.source == source else { return }
         guard let result else {
           self.state = .ended("could not run the CLI")
+          return
+        }
+        if result.exitCode != 0, case .terminalTab = source,
+          let reason = TerminalSessions.historyFailureReason(result.stderr)
+        {
+          self.lines = []
+          self.state = .ended(reason)
           return
         }
         let text = result.stdout.isEmpty ? result.stderr : result.stdout

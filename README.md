@@ -30,7 +30,8 @@ sessions, and puts the useful actions one click away.
 
 - **Listening ports** — TCP and UDP listeners, deduplicated and grouped by owner.
 - **Agent attribution** — Claude Code, Codex, Cursor, Kimi, OpenCode, and other
-  known harnesses, plus cmux workspace and surface names.
+  known harnesses, plus cmux workspace and surface names, and the Ghostty or
+  Terminal tab a server runs in (grouped by the tab's folder).
 - **Background activity** — Docker containers, Apple `container` workloads,
   booted Xcode simulators, and MCP server processes, including stopped
   containers. Each simulator row shows what the whole device costs in CPU and

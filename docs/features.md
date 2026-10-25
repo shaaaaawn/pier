@@ -10,7 +10,11 @@ For each listener, Pier walks the process ancestry and combines two signals:
 - known developer tools and AI agent harnesses, including Claude Code, Codex,
   Cursor, Kimi, OpenCode, terminal apps, and others defined in
   `Attributor.harnessTable`;
-- cmux process, surface, and workspace mappings when cmux access is available.
+- cmux process, surface, and workspace mappings when cmux access is available;
+- the Ghostty or Terminal tab a process runs in, grouped by the tab's working
+  directory ("Ghostty · ~/code/web"). Pier reads the tab shell's tty and working
+  directory in-process with libproc; no permission is needed. An agent nearer
+  the process still wins: Claude Code run in a Ghostty tab stays "Claude Code".
 
 The process itself wins before its launcher. This prevents a helper launched by
 an agent from being mislabeled as the launcher when Pier recognizes the helper.
@@ -95,6 +99,8 @@ Available log behavior depends on the source:
 | Docker container | Live `docker logs --follow` stream |
 | Apple container | `container logs` snapshot every 2 seconds |
 | cmux-attributed process | Surface scrollback snapshot every 2 seconds |
+| Terminal.app tab | Tab scrollback via AppleScript every 2 seconds, while the drawer is open; needs Automation permission |
+| Ghostty tab | Unavailable; Ghostty 1.3 doesn't expose a tab's output to other apps |
 | MCP server | Unavailable; stdio belongs to its harness |
 | Plain local process | Use the terminal that launched it |
 | System process | Use Console.app |

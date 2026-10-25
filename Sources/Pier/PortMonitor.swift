@@ -54,6 +54,7 @@ final class PortMonitor: ObservableObject {
     case .docker: return dockerPath
     case .appleContainer: return containerPath
     case .cmuxSurface: return cmuxPath
+    case .terminalTab: return "/usr/bin/osascript"
     case .unavailable: return nil
     }
   }
@@ -165,7 +166,8 @@ final class PortMonitor: ObservableObject {
       // pure function of what it returned, and is tested as one.
       let assembled = MonitorAssembly.ports(
         from: ProbeOutput(
-          sockets: socketsOut, processTable: psOut, commandLines: fullPS, cmux: cmux))
+          sockets: socketsOut, processTable: psOut, commandLines: fullPS, cmux: cmux,
+          terminalInfo: { TerminalSessions.read(pid: $0) }))
       let entries = assembled.entries
       let table = assembled.table
 
