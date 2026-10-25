@@ -8,7 +8,7 @@ final class FilterTests: XCTestCase {
     attr: Attribution = .none
   ) -> PortEntry {
     PortEntry(
-      pid: pid, port: port, proto: proto, processName: name, user: "shawn",
+      pid: pid, port: port, proto: proto, processName: name, user: "dev",
       bindAddresses: ["127.0.0.1"], attribution: attr)
   }
 

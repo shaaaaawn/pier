@@ -5,11 +5,11 @@ import XCTest
 final class LsofParserTests: XCTestCase {
   let tcpFixture = """
     COMMAND     PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
-    ControlCe  470 shawn   12u  IPv4 0xabc123      0t0  TCP 127.0.0.1:8888 (LISTEN)
-    python3  73101 shawn    3u  IPv4 0xdef456      0t0  TCP *:8931 (LISTEN)
-    node     90220 shawn   22u  IPv6 0x111         0t0  TCP [::1]:3000 (LISTEN)
-    node     90220 shawn   23u  IPv4 0x222         0t0  TCP 127.0.0.1:3000 (LISTEN)
-    rapportd   555 shawn    4u  IPv4 0x333         0t0  TCP *:49222
+    ControlCe  470 dev   12u  IPv4 0xabc123      0t0  TCP 127.0.0.1:8888 (LISTEN)
+    python3  73101 dev    3u  IPv4 0xdef456      0t0  TCP *:8931 (LISTEN)
+    node     90220 dev   22u  IPv6 0x111         0t0  TCP [::1]:3000 (LISTEN)
+    node     90220 dev   23u  IPv4 0x222         0t0  TCP 127.0.0.1:3000 (LISTEN)
+    rapportd   555 dev    4u  IPv4 0x333         0t0  TCP *:49222
     """
 
   func testPlainTcpOutput() {
@@ -19,7 +19,7 @@ final class LsofParserTests: XCTestCase {
     let controlCenter = records[0]
     XCTAssertEqual(controlCenter.command, "ControlCe")
     XCTAssertEqual(controlCenter.pid, 470)
-    XCTAssertEqual(controlCenter.user, "shawn")
+    XCTAssertEqual(controlCenter.user, "dev")
     XCTAssertEqual(controlCenter.proto, .tcp)
     XCTAssertEqual(controlCenter.bindAddress, "127.0.0.1")
     XCTAssertEqual(controlCenter.port, 8888)
@@ -50,7 +50,7 @@ final class LsofParserTests: XCTestCase {
     let udpFixture = """
       COMMAND     PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
       mDNSRespo   123 _mdnsresponder 6u IPv4 0x1      0t0  UDP *:5353
-      node      90220 shawn   30u  IPv4 0x2          0t0  UDP 192.168.1.5:53122->8.8.8.8:53
+      node      90220 dev   30u  IPv4 0x2          0t0  UDP 192.168.1.5:53122->8.8.8.8:53
       """
     let records = LsofParser.parse(udpFixture, proto: .udp)
     XCTAssertEqual(records.count, 1)
@@ -84,8 +84,8 @@ final class LsofCommandWidthTests: XCTestCase {
   func testParsesFullWidthCommandRows() {
     let out = """
       COMMAND    PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
-      python3.11 11565 shawn 4u  IPv6 0xca7fb391e5f7663c      0t0  TCP *:8899 (LISTEN)
-      Cursor\\x20Helper\\x20(Plugin) 51731 shawn 30u IPv4 0x1 0t0 TCP 127.0.0.1:8231 (LISTEN)
+      python3.11 11565 dev 4u  IPv6 0xca7fb391e5f7663c      0t0  TCP *:8899 (LISTEN)
+      Cursor\\x20Helper\\x20(Plugin) 51731 dev 30u IPv4 0x1 0t0 TCP 127.0.0.1:8231 (LISTEN)
       """
     let records = LsofParser.parse(out, proto: .tcp)
     XCTAssertEqual(records.map(\.command), ["python3.11", "Cursor Helper (Plugin)"])

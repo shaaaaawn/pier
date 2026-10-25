@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest something Pier should show or do.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. For a large feature or an architectural change, please
+        describe the problem first; the approach can be discussed here before anyone
+        writes code (see [CONTRIBUTING.md](https://github.com/shaaaaawn/pier/blob/main/CONTRIBUTING.md)).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: What were you trying to find out or do, and where did Pier fall short?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like Pier to do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Other tools, workarounds, or different shapes of the same idea.
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Mockups, examples, or the tool or harness this involves. Redact anything private.
+    validations:
+      required: false

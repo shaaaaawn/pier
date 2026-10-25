@@ -6,6 +6,9 @@ Pier is a macOS app with behavior that crosses AppKit, local processes, sockets,
 and optional CLIs. Contributions should be small, testable, and verified against
 the real path they change.
 
+Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+Report security issues privately as described in [SECURITY.md](SECURITY.md).
+
 ## Before you start
 
 1. Read the [documentation index](docs/index.md).

@@ -10,7 +10,7 @@ final class EventDiffTests: XCTestCase {
     -> PortEntry
   {
     PortEntry(
-      pid: pid, port: port, proto: .tcp, processName: name, user: "shawn",
+      pid: pid, port: port, proto: .tcp, processName: name, user: "dev",
       bindAddresses: ["127.0.0.1"], attribution: actor)
   }
 

@@ -64,6 +64,12 @@ When changing UI structure, render before and after and compare every variant.
 The minimum-width fixture catches controls that fit at the default width but wrap
 at 340 points.
 
+The README screenshot, `docs/images/pier-panel.png`, is the default list fixture.
+After a visible UI change, regenerate it with
+`swift build && .build/debug/Pier --render-fixture docs/images/pier-panel.png`.
+Never replace it with a capture of a real panel: that shows your own processes,
+paths and project names.
+
 ## Live probes
 
 Use the matching probe whenever a change touches a live integration:

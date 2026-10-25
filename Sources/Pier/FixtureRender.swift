@@ -290,7 +290,7 @@ enum FixtureData {
   private static func e(
     _ pid: Int32, _ port: Int, _ name: String,
     proto: PortProtocol = .tcp,
-    user: String = "shawn",
+    user: String = "dev",
     binds: [String] = ["127.0.0.1"],
     attr: Attribution,
     cpu: Double = 0.4,
@@ -347,28 +347,28 @@ enum FixtureData {
     e(8120, 49224, "Cursor", attr: .harness("Cursor")),
     e(8231, 51731, "Cursor Helper (", attr: .harness("Cursor")),
 
-    // cmux · Idle Screens — one workerd pid holding five Vite dev ports.
+    // cmux · Acme Web — one workerd pid holding five Vite dev ports.
     e(
       9122, 60342, "workerd",
-      attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil), cpu: 94,
+      attr: .cmux(workspace: "Acme Web", surface: "make dev web", harness: nil), cpu: 94,
       rssMB: 890),
     e(
       9122, 60345, "workerd",
-      attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
+      attr: .cmux(workspace: "Acme Web", surface: "make dev web", harness: nil)),
     e(
       9122, 60350, "workerd",
-      attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
+      attr: .cmux(workspace: "Acme Web", surface: "make dev web", harness: nil)),
     e(
       9122, 60352, "workerd",
-      attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
+      attr: .cmux(workspace: "Acme Web", surface: "make dev web", harness: nil)),
     e(
       9122, 60353, "workerd",
-      attr: .cmux(workspace: "Idle Screens", surface: "make dev screens", harness: nil)),
+      attr: .cmux(workspace: "Acme Web", surface: "make dev web", harness: nil)),
 
     // cmux with a harness behind it — node dev server under a Kimi surface.
     e(
       55105, 3000, "node", binds: ["::1", "127.0.0.1"],
-      attr: .cmux(workspace: "Personal Agent", surface: "Kimi", harness: "Kimi"), cpu: 9, rssMB: 220
+      attr: .cmux(workspace: "Side Project", surface: "Kimi", harness: "Kimi"), cpu: 9, rssMB: 220
     ),
 
     // Codex — two ports on one pid.
@@ -399,7 +399,7 @@ enum FixtureData {
         actor: .harness("Claude Code"), count: 3),
       PierEvent(
         date: ago(48), action: .started, subject: .port(5173, process: "node"),
-        actor: .cmux(workspace: "Idle Screens", surface: "dev", harness: "Claude Code")),
+        actor: .cmux(workspace: "Acme Web", surface: "dev", harness: "Claude Code")),
       PierEvent(
         date: ago(120), action: .stopped, subject: .container(.docker, "data_redis"),
         actor: .none, selfInitiated: true),
@@ -408,14 +408,14 @@ enum FixtureData {
         actor: .none),
       PierEvent(
         date: ago(600), action: .stopped, subject: .port(3001, process: "node · ntl"),
-        actor: .cmux(workspace: "Hermosa Server", surface: "dev", harness: nil)),
+        actor: .cmux(workspace: "Acme API", surface: "dev", harness: nil)),
     ]
   }()
 
   static let activity: [ActivityEntry] = [
     ActivityEntry(
-      kind: .docker, name: "hermosa_mcp_server",
-      detail: "hermosa-server-mcp-server · Up 28 hours (healthy)", ports: [8080]),
+      kind: .docker, name: "acme_api",
+      detail: "acme-api · Up 28 hours (healthy)", ports: [8080]),
     ActivityEntry(
       kind: .docker, name: "data_postgres",
       detail: "postgres:16-alpine · Up 28 hours (healthy)", ports: [5432]),
@@ -442,7 +442,7 @@ enum FixtureData {
     ActivityEntry(
       kind: .mcp, name: "uv · blender-mcp",
       detail: "uv run blender-mcp", pids: [3634],
-      attribution: .cmux(workspace: "Metaquarium", surface: "Claude", harness: "Claude Code")),
+      attribution: .cmux(workspace: "Sandbox", surface: "Claude", harness: "Claude Code")),
     ActivityEntry(
       kind: .mcp, name: "npm · server-github",
       detail: "npm exec @modelcontextprotocol/server-github", pids: [7801]),

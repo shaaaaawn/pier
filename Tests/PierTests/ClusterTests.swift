@@ -7,13 +7,13 @@ final class ClusterTests: XCTestCase {
     -> PortEntry
   {
     PortEntry(
-      pid: pid, port: port, proto: .tcp, processName: name, user: "shawn",
+      pid: pid, port: port, proto: .tcp, processName: name, user: "dev",
       bindAddresses: ["127.0.0.1"], attribution: attr
     )
   }
 
   private let cmuxAttr = Attribution.cmux(
-    workspace: "Idle Screens", surface: "make dev screens", harness: nil
+    workspace: "Acme Web", surface: "make dev web", harness: nil
   )
 
   /// Five workerd ports on one pid, plus a lone server.
@@ -32,7 +32,7 @@ final class ClusterTests: XCTestCase {
     let groups = PortMonitor.buildGroups(entries: fixture, matching: "")
     XCTAssertEqual(groups.count, 2)
 
-    let cmuxGroup = groups.first { $0.title == "cmux · Idle Screens" }
+    let cmuxGroup = groups.first { $0.title == "cmux · Acme Web" }
     XCTAssertEqual(cmuxGroup?.rows.count, 1)
     let cluster = cmuxGroup?.rows[0]
     XCTAssertEqual(cluster?.isCluster, true)
@@ -47,15 +47,15 @@ final class ClusterTests: XCTestCase {
 
   func testSearchFilteringInsideClusterAutoExpands() {
     let groups = PortMonitor.buildGroups(entries: fixture, matching: "60345")
-    let cluster = groups.first { $0.title == "cmux · Idle Screens" }?.rows[0]
+    let cluster = groups.first { $0.title == "cmux · Acme Web" }?.rows[0]
     XCTAssertEqual(cluster?.entries.map(\.port), [60345])
     XCTAssertEqual(cluster?.totalCount, 5)
     XCTAssertEqual(cluster?.autoExpanded, true)
   }
 
   func testSearchMatchingBadgeKeepsClusterCollapsed() {
-    let groups = PortMonitor.buildGroups(entries: fixture, matching: "idle screens")
-    let cluster = groups.first { $0.title == "cmux · Idle Screens" }?.rows[0]
+    let groups = PortMonitor.buildGroups(entries: fixture, matching: "acme web")
+    let cluster = groups.first { $0.title == "cmux · Acme Web" }?.rows[0]
     XCTAssertEqual(cluster?.totalCount, 5)
     XCTAssertEqual(cluster?.entries.count, 5)
     XCTAssertEqual(cluster?.autoExpanded, false)
@@ -74,7 +74,7 @@ final class ClusterTests: XCTestCase {
 
   func testGroupEntryCountCountsVisibleChildren() {
     let groups = PortMonitor.buildGroups(entries: fixture, matching: "")
-    XCTAssertEqual(groups.first { $0.title == "cmux · Idle Screens" }?.entryCount, 5)
+    XCTAssertEqual(groups.first { $0.title == "cmux · Acme Web" }?.entryCount, 5)
   }
 }
 
@@ -96,9 +96,9 @@ final class SmartBadgeLabelTests: XCTestCase {
 
   func testSurfaceDroppedBeforeWorkspace() {
     let attr = Attribution.cmux(
-      workspace: "Idle Screens", surface: "make dev screens", harness: nil)
+      workspace: "Acme Web", surface: "make dev web", harness: nil)
     let label = attr.smartBadgeLabel(maxChars: 24)
-    XCTAssertEqual(label, "cmux · Idle Screens · …")
+    XCTAssertEqual(label, "cmux · Acme Web · …")
     XCTAssertLessThanOrEqual(label.count, 24)
   }
 
@@ -113,7 +113,7 @@ final class SmartBadgeLabelTests: XCTestCase {
 
   func testFullLabelStillAvailable() {
     let attr = Attribution.cmux(
-      workspace: "Idle Screens", surface: "make dev screens", harness: nil)
-    XCTAssertEqual(attr.badgeLabel, "cmux · Idle Screens · make dev screens")
+      workspace: "Acme Web", surface: "make dev web", harness: nil)
+    XCTAssertEqual(attr.badgeLabel, "cmux · Acme Web · make dev web")
   }
 }

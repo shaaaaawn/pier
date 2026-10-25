@@ -20,6 +20,12 @@ It inventories the work already running on your Mac, traces listening processes
 back to AI coding harnesses and [cmux](https://github.com/manaflow-ai/cmux)
 sessions, and puts the useful actions one click away.
 
+<p align="center">
+  <img src="docs/images/pier-panel.png" width="440" alt="The Pier panel: listening ports grouped under cmux workspaces, Cursor and Codex, each with a CPU sparkline, above a Docker section listing running and stopped containers">
+  <br>
+  <sub>Rendered from Pier's built-in fixture data (<code>.build/debug/Pier --render-fixture</code>), not a real machine.</sub>
+</p>
+
 ## What Pier shows
 
 - **Listening ports** — TCP and UDP listeners, deduplicated and grouped by owner.
