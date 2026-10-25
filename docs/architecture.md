@@ -147,6 +147,41 @@ invisible outside the Pier module, which is the boundary that matters.
 statement about a mechanical view refactor than any test this repo could
 reasonably write. Do the same for the next one.
 
+## Probing is separated from assembling
+
+`PortMonitor.refresh()` used to do three unrelated jobs in one async closure:
+run five `ProcessRunner` calls, wire their output together, and publish. The
+middle step is where the interesting decisions live — which harness spawned a
+port, which cmux surface owns its logs, what each pid's CPU reading is — and it
+could only be exercised against a real machine running real servers.
+
+It now goes through `MonitorAssembly`:
+
+```
+ProbeOutput { tcp, udp, processTable, commandLines, cmux }   ← impure, one place
+        ↓  MonitorAssembly.ports(from:)                       ← pure, tested
+AssembledPorts { entries, table, commands }
+```
+
+Everything above the boundary talks to the world; everything below is a pure
+function of what it returned. That's the same contract the individual parsers
+already kept, applied one level up — and it made attribution-through-the-process-
+chain testable from captured `lsof`/`ps` strings for the first time.
+
+`PortMonitor` itself is split the same way as the view layer:
+
+| File | Holds |
+| --- | --- |
+| `PortMonitor.swift` | stored state, inits, the timer, `refresh()` orchestration |
+| `+Events.swift` | expectations, the diff, the unseen count |
+| `+Grouping.swift` | entries → filtered, sorted, grouped sections |
+| `+Activity.swift` | Docker / Apple / MCP collection + the CLI snapshot probe |
+| `+Actions.swift` | everything that changes the machine |
+
+Stored properties stay on the class — extensions can't declare them and
+`@Published` needs storage — so members crossed by the split are
+module-internal. Each one carries a comment saying why.
+
 ## Deliberate constraints
 
 - Every external tool is optional, and a failure must **say why**: a missing CLI,

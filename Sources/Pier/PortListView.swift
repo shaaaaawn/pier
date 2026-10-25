@@ -12,6 +12,9 @@ struct PortListView: View {
   var initialExpandedID: String? = nil
 
   @EnvironmentObject var monitor: PortMonitor
+  /// Held, deliberately not observed: `MemoryGlanceView` observes it, so a
+  /// memory tick redraws the footer glance instead of this whole panel.
+  @Environment(\.memoryMonitor) var memoryMonitor
   @State var search = ""
   /// Scope chip + system visibility, remembered across launches.
   @AppStorage("listFilter") var filterRaw = PierFilter.all.rawValue
@@ -170,16 +173,27 @@ struct PortListView: View {
 
   var footer: some View {
     HStack(spacing: 8) {
-      Group {
-        if let last = monitor.lastRefresh {
-          Text("Updated ") + Text(last, style: .relative)
-        } else {
-          Text("Not refreshed yet")
-        }
+      if let memoryMonitor {
+        MemoryGlanceView(monitor: memoryMonitor)
       }
-      .font(.system(size: 10))
-      .foregroundStyle(.tertiary)
-      Spacer()
+      // At the 340pt minimum the glance and "Updated" don't both fit. The
+      // glance is the information; the refresh age is the part that yields —
+      // and it yields *entirely*, because "Update…" says nothing.
+      ViewThatFits(in: .horizontal) {
+        Group {
+          if let last = monitor.lastRefresh {
+            Text("Updated ") + Text(last, style: .relative)
+          } else {
+            Text("Not refreshed yet")
+          }
+        }
+        .font(.system(size: 10))
+        .foregroundStyle(.tertiary)
+        .lineLimit(1)
+        Color.clear.frame(width: 0, height: 0)
+      }
+      .layoutPriority(-1)
+      Spacer(minLength: 0)
       Button("Quit") {
         NSApplication.shared.terminate(nil)
       }

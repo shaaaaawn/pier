@@ -60,6 +60,8 @@ enum PanelPlacement {
 @MainActor
 final class MenuBarController: NSObject {
   let monitor = PortMonitor()
+  /// RAM vs swap for the footer glance. Samples only while the panel is open.
+  let memory = MemoryMonitor()
 
   private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
   private let panel: PanelWindow
@@ -87,7 +89,10 @@ final class MenuBarController: NSObject {
     panel.hidesOnDeactivate = false
     panel.animationBehavior = .utilityWindow
 
-    let hosting = NSHostingView(rootView: PortListView().environmentObject(monitor))
+    let hosting = NSHostingView(
+      rootView: PortListView()
+        .environmentObject(monitor)
+        .environment(\.memoryMonitor, memory))
     hosting.frame = NSRect(origin: .zero, size: size)
     hosting.autoresizingMask = [.width, .height]
     hosting.wantsLayer = true
@@ -263,6 +268,7 @@ final class MenuBarController: NSObject {
     panel.makeKeyAndOrderFront(nil)
     statusItem.button?.highlight(true)
     monitor.windowVisible = true
+    memory.setActive(true)
     monitor.markEventsSeen()
     installDismissMonitors()
   }
@@ -272,6 +278,8 @@ final class MenuBarController: NSObject {
     panel.orderOut(nil)
     statusItem.button?.highlight(false)
     monitor.windowVisible = false
+    // Nothing samples memory while the panel is closed.
+    memory.setActive(false)
   }
 
   // The panel used to chase the menu bar: a 0.5s timer re-anchored it whenever

@@ -130,18 +130,32 @@ enum Attributor {
     // The executable's own basename is effectively the process name, and it's
     // often the only identifying part (`~/.local/bin/agy`). Safe to match name
     // tokens against — unlike directories, it *is* the tool.
-    if let argv0 = lower.split(separator: " ").first,
-      let basename = argv0.split(separator: "/").last,
+    // First token only — splitting the whole line just to read its head cost
+    // an array of every token, on command lines that run past 9,000 chars.
+    let argv0 = firstToken(lower)
+    if !argv0.isEmpty, let basename = argv0.split(separator: "/").last,
       let label = harnessLabel(for: String(basename))
     {
       return label
     }
 
+    // Most commands contain none of the path tokens. A segment can only match
+    // a token the whole line contains, so check that first, on bytes: scanning
+    // every segment for every token was ~10,000 Foundation range(of:) calls on
+    // a single long command line.
+    let bytes = Array(lower.utf8)
+    let present = harnessTable.contains { rule in
+      rule.pathTokens.contains { utf8Contains(bytes, $0) }
+    }
+    guard present else { return nil }
+
     let segments = lower.split(whereSeparator: { $0 == "/" || $0 == " " || $0 == "=" })
     for rule in harnessTable where !rule.pathTokens.isEmpty {
-      for pathToken in rule.pathTokens {
+      for pathToken in rule.pathTokens where utf8Contains(bytes, pathToken) {
         // Whole-segment or boundary-delimited hit inside a segment.
-        if segments.contains(where: { segmentMatches(String($0), token: pathToken) }) {
+        // Substrings straight through: converting each segment to a String
+        // here allocated once per segment, per token, per rule.
+        if segments.contains(where: { segmentMatches($0, token: pathToken) }) {
           return rule.label
         }
       }
@@ -151,7 +165,7 @@ enum Attributor {
 
   /// A path segment counts when it equals the token or contains it delimited by
   /// non-alphanumerics (`@anthropic-ai/claude-code`, `kimi-code-1.2`).
-  static func segmentMatches(_ segment: String, token: String) -> Bool {
+  static func segmentMatches<S: StringProtocol>(_ segment: S, token: String) -> Bool {
     if segment == token { return true }
     guard let range = segment.range(of: token) else { return false }
     let before =
@@ -163,24 +177,62 @@ enum Attributor {
     return okBefore && okAfter
   }
 
+  /// Plain byte substring search. Both sides are already lowercased; the
+  /// haystack is converted once per command line by the caller.
+  static func utf8Contains(_ h: [UInt8], _ needle: String) -> Bool {
+    let n = Array(needle.utf8)
+    guard !n.isEmpty, n.count <= h.count else { return n.isEmpty }
+    let first = n[0]
+    var i = 0
+    while i <= h.count - n.count {
+      if h[i] == first {
+        var j = 1
+        while j < n.count, h[i + j] == n[j] { j += 1 }
+        if j == n.count { return true }
+      }
+      i += 1
+    }
+    return false
+  }
+
+  /// The first space-delimited token, ignoring leading spaces — what
+  /// `split(separator: " ").first` returns, without building every token.
+  static func firstToken(_ text: String) -> Substring {
+    text.drop(while: { $0 == " " }).prefix(while: { $0 != " " })
+  }
+
+  /// Paths only macOS itself ships from. `/usr/libexec` and `/System` are
+  /// SIP-protected; `/Library/Apple` holds Apple-managed daemons.
+  static func isSystemBinary(_ command: String) -> Bool {
+    let head = firstToken(command)
+    let path = head.isEmpty ? Substring(command) : head
+    return path.hasPrefix("/System/") || path.hasPrefix("/usr/libexec/")
+      || path.hasPrefix("/usr/sbin/") || path.hasPrefix("/Library/Apple/")
+  }
+
   /// Combine the cmux and harness signals for one listening port.
   ///
   /// `commands` maps pid → full command line (already gathered for MCP
   /// detection, so this costs no extra probe). Each link in the ancestor chain
   /// is tested by name first, then by command path, self before parents — a
   /// process is named by what it *is* before what launched it.
-  /// Paths only macOS itself ships from. `/usr/libexec` and `/System` are
-  /// SIP-protected; `/Library/Apple` holds Apple-managed daemons.
-  static func isSystemBinary(_ command: String) -> Bool {
-    let path = command.split(separator: " ").first.map(String.init) ?? command
-    return path.hasPrefix("/System/") || path.hasPrefix("/usr/libexec/")
-      || path.hasPrefix("/usr/sbin/") || path.hasPrefix("/Library/Apple/")
-  }
-
   static func attribute(
     entry: PortEntry, table: ProcessTable, cmux: CmuxSnapshot?,
     commands: [Int32: String] = [:]
   ) -> Attribution {
+    attribute(entry: entry, table: table, cmux: cmux, labels: CommandLabelCache(commands))
+  }
+
+  /// Same decision, with command-line harness lookups shared through `labels`.
+  /// One refresh attributes every port, and ports spawned by one agent session
+  /// share the same ancestors — measured on a real machine, up to 616 chain
+  /// links resolved to only 166 distinct pids — so each command line (some over
+  /// 9,000 characters) should be lowercased and scanned once, not per port.
+  static func attribute(
+    entry: PortEntry, table: ProcessTable, cmux: CmuxSnapshot?,
+    labels: CommandLabelCache
+  ) -> Attribution {
+    let commands = labels.commands
     if entry.user == "root" || entry.port < 1024 { return .system }
     // Apple's own services run as *you* on unprivileged ports — ControlCenter's
     // AirPlay Receiver sits on :5000, indistinguishable from a Flask app by user
@@ -196,7 +248,7 @@ enum Attributor {
         harness = label
         break
       }
-      if let command = commands[link.pid], let label = harnessLabel(fromCommand: command) {
+      if let label = labels.label(for: link.pid) {
         harness = label
         break
       }
@@ -208,5 +260,26 @@ enum Attributor {
     }
     if let harness { return .harness(harness) }
     return .none
+  }
+}
+
+/// Memoizes `Attributor.harnessLabel(fromCommand:)` per pid for one refresh.
+///
+/// A class so a single instance is shared across every entry assembled in that
+/// refresh. Never keep one longer: pids get reused, and a cached label would
+/// then belong to a process that no longer exists.
+final class CommandLabelCache {
+  let commands: [Int32: String]
+  private var labels: [Int32: String?] = [:]
+
+  init(_ commands: [Int32: String]) {
+    self.commands = commands
+  }
+
+  func label(for pid: Int32) -> String? {
+    if let cached = labels[pid] { return cached }
+    let label = commands[pid].flatMap { Attributor.harnessLabel(fromCommand: $0) }
+    labels[pid] = .some(label)
+    return label
   }
 }

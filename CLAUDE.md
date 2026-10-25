@@ -246,10 +246,33 @@ Two unrelated kinds of "logs" live in this app; don't confuse them.
   backstop, not permission to log argv. The single exception is a failed tool's
   error text, and it goes through `PierLog.summarize` (first line, 200 chars).
 
+## Verifying a refactor: `make fixture-check`
+
+```bash
+make fixture-baseline   # before your change
+# ...refactor...
+make fixture-check      # after — fails on any pixel difference
+```
+
+Byte-identical renders are a stronger statement about a mechanical refactor
+than any unit test here could reasonably make. Baselines live in a gitignored
+`.fixtures/` — committing PNGs would mean a megabyte of binary churn on every
+intentional UI tweak, which is a worse trade than re-running one command.
+
+**Fixture renders are hermetic and must stay that way.** They pin *every*
+`@AppStorage` key via `FixtureDefaults` and restore the previous values through
+`atexit`. Two bugs made that necessary: renders were writing `listFilter` into
+the running app's own defaults (so `make fixture` silently changed which filter
+chip your panel had selected), and a render that didn't pin a value inherited
+whatever the previous one left behind (so `--render-fixture` produced different
+PNGs run to run). **Adding a new `@AppStorage` key to the UI means adding it to
+`FixtureDefaults.keys`**, or the gate starts flaking.
+
 ## Refactoring the view layer
 
 `PortListView` is split across `PortListView+{Chrome,Activity,Rows,Events}.swift`
-as extensions of one type — see `docs/architecture.md`. Two rules:
+and `PortMonitor` across `PortMonitor+{Events,Grouping,Activity,Actions}.swift`,
+both as extensions of one type — see `docs/architecture.md`. Two rules:
 
 - **Verify a view refactor by pixel-diffing the fixtures**, not by eye. Render
   all eight before, refactor, render after, `cmp` them. Byte-identical is the

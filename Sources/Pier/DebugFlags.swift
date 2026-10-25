@@ -7,6 +7,13 @@ import UserNotifications
 /// item, so it's handled in AppDelegate after launch.
 enum DebugFlags {
   static func handleIfPresent(_ args: [String]) {
+    if args.contains("--print-memory") {
+      MemoryProbe.printMemory()
+      exit(0)
+    }
+    if let dir = value(after: "--render-fixture-memory", in: args) {
+      MainActor.assumeIsolated { MemoryProbe.renderFixtures(to: dir) }
+    }
     if args.contains("--probe-statusitem") {
       MainActor.assumeIsolated { probeStatusItem() }
       exit(0)
@@ -128,7 +135,7 @@ enum DebugFlags {
   private static func printGroups() {
     let monitor = PortMonitor()
     print("cmux CLI: \(monitor.cmuxPath ?? "not found")")
-    // A full cycle runs lsof twice, ps twice, cmux and docker — allow for it.
+    // A full cycle runs lsof, ps twice, cmux and docker — allow for it.
     let deadline = Date().addingTimeInterval(45)
     while monitor.lastRefresh == nil, Date() < deadline {
       RunLoop.current.run(until: Date().addingTimeInterval(0.25))

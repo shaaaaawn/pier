@@ -76,6 +76,12 @@ applog: ## tail Pier's own log: ~/Library/Logs/Pier/pier.log (N=lines, default 5
 applog-follow: ## follow Pier's own log live (Ctrl-C to stop)
 	@tail -f "$$HOME/Library/Logs/Pier/pier.log"
 
+fixture-baseline: ## capture fixture renders before a refactor
+	./scripts/fixture-check.sh baseline
+
+fixture-check: ## re-render and fail on any pixel difference vs the baseline
+	./scripts/fixture-check.sh check
+
 fmt: ## format sources with Xcode's bundled swift-format (no install needed)
 	xcrun swift-format format --in-place --parallel Sources/Pier/*.swift Tests/PierTests/*.swift
 
