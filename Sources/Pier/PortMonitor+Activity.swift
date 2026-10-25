@@ -67,15 +67,23 @@ extension PortMonitor {
   static func collectActivity(
     dockerPath: String?, containerPath: String?, table: ProcessTable, cmux: CmuxSnapshot?,
     commandsOutput: String? = nil
-  ) -> (entries: [ActivityEntry], dockerState: EngineState, appleState: EngineState) {
+  ) -> (
+    entries: [ActivityEntry], dockerState: EngineState, dockerFault: DockerControl.Fault?,
+    appleState: EngineState
+  ) {
     var activity: [ActivityEntry] = []
     var dockerState = EngineState.cliMissing
+    // Returned with the rest of the snapshot, never parked in a static: this
+    // runs on the refresh queue and the panel reads it on main, which is the
+    // race 939846e removed for the engine states themselves.
+    var dockerFault: DockerControl.Fault?
     if let dockerPath {
       let result = ProcessRunner.run(
         dockerPath,
         ["ps", "-a", "--format", "{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"],
         timeout: 5)
       dockerState = DockerControl.state(from: result, cliInstalled: true)
+      dockerFault = DockerControl.fault(from: result, cliInstalled: true)
       if dockerState.isReady, let result {
         activity += ActivityParser.parseDockerPS(result.stdout)
       }
@@ -92,7 +100,10 @@ extension PortMonitor {
       commandsOutput
       ?? ProcessRunner.run("/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)?.stdout ?? ""
     activity += ActivityParser.mcpEntries(fullPS: fullPS, table: table, cmux: cmux)
-    return (entries: activity, dockerState: dockerState, appleState: appleState)
+    return (
+      entries: activity, dockerState: dockerState, dockerFault: dockerFault,
+      appleState: appleState
+    )
   }
 
   /// `Pier --print-activity`: one synchronous collection pass, printed as

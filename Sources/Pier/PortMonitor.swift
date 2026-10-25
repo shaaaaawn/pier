@@ -13,6 +13,9 @@ final class PortMonitor: ObservableObject {
   @Published private(set) var dockerState: EngineState = .cliMissing
   /// Same, for Apple's `container` engine.
   @Published private(set) var appleState: EngineState = .cliMissing
+  /// Why the docker probe failed, when it did — populated only when the Docker
+  /// CLI is present and the last probe produced a fault.
+  @Published private(set) var dockerFault: DockerControl.Fault?
   @Published var dockerReclaimable: String?
   @Published var appleReclaimable: String?
   @Published private(set) var lastRefresh: Date?
@@ -182,6 +185,7 @@ final class PortMonitor: ObservableObject {
           PierLog.shared.log("apple engine: \(self.appleState) → \(activitySnapshot.appleState)")
         }
         self.dockerState = activitySnapshot.dockerState
+        self.dockerFault = activitySnapshot.dockerFault
         self.appleState = activitySnapshot.appleState
         self.history.record(readings)
         let now = Date()

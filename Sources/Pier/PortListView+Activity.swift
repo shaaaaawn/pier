@@ -23,9 +23,10 @@ extension PortListView {
       sectionHeader(
         id: group.id, count: down ? nil : group.entryCount, title: group.title,
         subtitle: down
-          ? "not running"
+          ? engineFaultHeadline(for: group.kind)
           : (group.stoppedCount > 0
-            ? "\(group.stoppedCount) stopped" : nil)
+            ? "\(group.stoppedCount) stopped" : nil),
+        subtitleHelp: down ? engineFaultDetail(for: group.kind) : nil
       ) {
         activityIcon(group.kind, size: 13)
       }
@@ -71,6 +72,18 @@ extension PortListView {
         .font(.system(size: size * 0.78))
         .foregroundStyle(.secondary)
     }
+  }
+
+  /// "not running" when nothing is listening, "not responding" when something
+  /// answered and refused — Start only helps with the first.
+  func engineFaultHeadline(for kind: ActivityKind) -> String {
+    guard kind == .docker, let fault = monitor.dockerFault else { return "not running" }
+    return fault.headline
+  }
+
+  func engineFaultDetail(for kind: ActivityKind) -> String? {
+    guard kind == .docker else { return nil }
+    return monitor.dockerFault?.detail
   }
 
   /// The engine behind a section, or nil for MCP (no engine to be up or down).
@@ -230,6 +243,7 @@ extension PortListView {
   /// collapse, so a busy machine stays scannable.
   func sectionHeader<Icon: View>(
     id: String, count: Int?, title: String, subtitle: String? = nil,
+    subtitleHelp: String? = nil,
     @ViewBuilder icon: () -> Icon
   ) -> some View {
     let isCollapsed = collapsed.contains(id)
@@ -254,6 +268,9 @@ extension PortListView {
         Text(subtitle)
           .font(.system(size: 9.5))
           .foregroundStyle(.tertiary)
+          // The engine's own words. Too long for the row, but the difference
+          // between "start it" and "it's broken, here's why".
+          .help(subtitleHelp ?? "")
       }
       Spacer()
     }

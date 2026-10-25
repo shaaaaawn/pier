@@ -1,6 +1,6 @@
 # Pier — build/test/run front door.
 .DEFAULT_GOAL := help
-.PHONY: help build test run fixture anchor logs cmux docker apple activity viewport clean
+.PHONY: help build test run fixture anchor logs cmux docker apple activity menubar viewport statusitem selfevent applog applog-follow fmt lint check clean
 
 help: ## show this list
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -44,7 +44,7 @@ cmux: ## report whether cmux workspace grouping can work
 	swift build
 	.build/debug/Pier --print-cmux
 
-menubar: ## which displays reserve menu bar space, and follow-loop check
+menubar: ## report which displays currently draw or reserve menu bar space
 	swift build
 	.build/debug/Pier --print-menubar
 

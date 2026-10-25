@@ -16,7 +16,7 @@ dependencies. UI is SwiftUI hosted in an AppKit panel.
 ```bash
 make            # list every target
 make build      # SPM build → assembles + ad-hoc signs dist/Pier.app
-make test       # unit suite (currently 152 tests)
+make test       # headless unit suite
 make run        # rebuild, then relaunch the menu bar app
 make fixture    # render the panel to PNGs with fixture data
 ```
@@ -40,7 +40,8 @@ found:
 | `--print-docker` / `--print-apple` | engine state + reclaimable space (read-only, never prunes) |
 | `--print-cmux` | whether workspace grouping can work, and why not |
 | `--probe-anchor` | where the panel landed vs its menu bar icon |
-| `--print-menubar` / `--probe-menubar-follow` | which displays reserve bar space; that the panel re-anchors when it stops |
+| `--print-menubar` / `--watch-menubar` | which displays reserve bar space; observe hide/reveal signals |
+| `--probe-panel-stable` | that the panel stays where it opened |
 | `--probe-resize` / `--probe-resize-perf` | that the window follows a resize; per-tick cost |
 | `--probe-viewport <url>` | the CSS viewport a real preview gets |
 | `--tail-docker <container>` | that `docker logs --follow` really streams |
@@ -122,13 +123,16 @@ Do not re-learn these. Each has a test locking it in.
     display hosting a fullscreen space reports 0pt reserved whether the bar is up
     or not (measured: `--watch-menubar`). The signal that moves is the menu bar's
     own window (layer 24, Window Server) dropping out of `CGWindowListCopyWindowInfo`
-    — see `MenuBarVisibility`. The panel re-anchors to the screen top when the bar
-    isn't drawn; only vertically, with 4pt of slack, so item jitter can't slide it.
+    — see `MenuBarVisibility`. Pier uses that state only when the panel opens,
+    then leaves the panel fixed. Following the bar made the panel jump whenever
+    the pointer crossed the top edge.
 
-    This one is also the cautionary tale for the probe discipline above: the first
-    attempt shipped a follow loop verified only against an artificial nudge. The
-    mechanism worked and the trigger never fired, so nothing changed on screen.
-    **Verify the trigger, not just the machinery.**
+    This one is also the cautionary tale for the probe discipline above: the
+    first attempt shipped a follow loop verified only against an artificial
+    nudge. The mechanism worked and the trigger never fired, so nothing changed
+    on screen. Once the trigger worked, the motion was worse than the static gap,
+    so `--probe-panel-stable` now verifies the opposite behavior. **Verify the
+    trigger and the user-visible outcome, not just the machinery.**
 11. **The status item moves after you open the panel.** Its width tracks the port
     count, and menu bar items are right-aligned, so a wider item's left edge
     shifts left. `--probe-anchor` therefore shows a systematic-looking offset
@@ -158,7 +162,7 @@ Do not re-learn these. Each has a test locking it in.
     one looks like the fix didn't work: App Nap dropping the item, a stale
     `NSStatusItem VisibleCC <name> = false`, a corrupt
     `NSStatusItem Preferred Position <name>`, and macOS force-hiding it. See
-    `StatusItemRepair.swift` and the README table. Two ordering rules are
+    `StatusItemRepair.swift` and `docs/troubleshooting.md`. Two ordering rules are
     load-bearing: the position repair must run **before** the status item is
     constructed, and the visibility sweep must run **once** or it overrides a
     user who deliberately hid the icon.
@@ -207,9 +211,10 @@ Two unrelated kinds of "logs" live in this app; don't confuse them.
    app: launches, engine state transitions, and every action Pier took.
    `make applog` (last 50 lines), `make applog N=200`, `make applog-follow`, or
    `.build/debug/Pier --log-path`. Implementation: `Sources/Pier/PierLog.swift`.
-2. **Other processes' logs** that Pier *tails into the panel* —
-   `docker logs -f`, `container logs -f`, cmux surface scrollback. Streamed live,
-   capped in memory, **never written to disk**. Implementation:
+2. **Other processes' logs** that Pier *shows in the panel* — live
+   `docker logs --follow`, 2-second `container logs` snapshots, or 2-second cmux
+   surface scrollback snapshots. Capped in memory, **never written to disk**.
+   Implementation:
    `Sources/Pier/LogTail.swift`; probe with `make logs C=<container>`.
 
 ## Conventions
@@ -228,10 +233,12 @@ Two unrelated kinds of "logs" live in this app; don't confuse them.
   counted (an unreachable engine gets no `0` pill).
 - Destructive actions confirm first and name exactly what they remove. Only
   volume prunes destroy data; their wording says so explicitly.
-- No network. No shell (`ProcessRunner` takes argv arrays). On disk: only
-  `UserDefaults` UI prefs and `~/Library/Logs/Pier/pier.log`. See the README's
-  "Privacy & security posture" — treat it as a contract to keep, not a
-  description to update.
+- No telemetry, update checks, or background service API calls. Preview
+  navigation stays on the selected host, but WebKit may still load remote
+  subresources referenced by that page. No shell (`ProcessRunner` takes argv
+  arrays). On disk: only `UserDefaults` UI prefs and
+  `~/Library/Logs/Pier/pier.log`. Treat `docs/privacy-and-security.md` as a
+  contract to keep, not a description to update casually.
 - **Log verbs and names, never argv.** `PierLog.shared.log(…)` takes things like
   `"stop docker container data_redis"`. Never pass a command line, environment,
   or captured tool output — `ps` command lines routinely contain `--api-key=…`.
@@ -293,15 +300,33 @@ so the two can't drift.
   is a second always-runs job with the required name that no-ops on skipped
   paths. Remember this before turning on required checks.
 
+## "Unreachable" is two different faults
+
+`docker ps` failing does not tell you *why*, and the two whys need opposite
+responses:
+
+- **`.notRunning`** — nothing is listening. Start is the right offer.
+- **`.failing(reason)`** — something answered and refused. Start does nothing;
+  the message is the whole value.
+
+Collapsing both into "not running" once cost a live debugging session: Docker
+Desktop's proxy was answering the socket while unable to reach dockerd in its
+VM (`no route to host`), so every call 500'd. Pier said "not running" under a
+Start button, `docker desktop status` said "running" (trap #1), and the actual
+error was visible nowhere. `DockerControl.fault(from:)` classifies it now and
+the section header shows the engine's own words in its tooltip.
+
 ## Security invariants
 
 Three properties the README states as fact. Breaking one is a bug, not a
 regression in polish:
 
-- **No outbound requests beyond the previewed host.** The preview's
+- **No top-level navigation beyond the previewed host.** The preview's
   `WKNavigationDelegate` must keep a `decidePolicyFor` handler backed by
   `PreviewNavigationPolicy`. Removing it re-opens the hole where any previewed
-  page can redirect Pier to an arbitrary external host.
+  page can redirect Pier to an arbitrary external host. This does not block
+  external subresources referenced by the page; documentation must not claim it
+  does.
 - **Secrets never enter argv.** `ps` is world-readable; the cmux password goes
   through the child's environment. `PierLog` logs verbs and names, never argv.
 - **The log is 0600 in a 0700 directory.** It lists every service, container and

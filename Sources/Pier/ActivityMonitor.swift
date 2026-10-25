@@ -118,6 +118,12 @@ enum ActivityParser {
   static func condenseStatus(_ status: String) -> String {
     var s = status
     s = s.replacingOccurrences(of: "Less than a second", with: "<1s")
+    // Docker's fuzzy durations must be handled *before* the unit table, or
+    // " minute" fires inside "a minute" and "About a minute" becomes "About am".
+    s = s.replacingOccurrences(of: "About a minute", with: "~1m")
+    s = s.replacingOccurrences(of: "About an hour", with: "~1h")
+    s = s.replacingOccurrences(of: "a minute", with: "1m")
+    s = s.replacingOccurrences(of: "an hour", with: "1h")
     s = s.replacingOccurrences(of: "(health: starting)", with: "(starting)")
     s = s.replacingOccurrences(
       of: #"^Exited \((\d+)\)"#, with: "exited $1,", options: .regularExpression)

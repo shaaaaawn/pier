@@ -1,5 +1,9 @@
 # CodexBar practices, applied to Pier
 
+> Historical design research for maintainers. This is not user documentation,
+> and statuses describe Pier's implementation at the time of each decision. See
+> the [documentation index](index.md) for current product guidance.
+
 Distilled from [steipete/CodexBar](https://github.com/steipete/CodexBar)
 ([README](https://github.com/steipete/CodexBar/blob/main/README.md),
 [architecture.md](https://github.com/steipete/CodexBar/blob/main/docs/architecture.md),
@@ -57,9 +61,11 @@ CodexBar: reads only a small set of known locations, never crawls the disk,
 stores no passwords, keeps config at `~/.config/codexbar/config.json` with
 restrictive permissions, and documents every macOS permission prompt.
 
-Pier today: no network, and the only disk writes are `UserDefaults` UI prefs
-(panel size, scope chip, preview width). Bounded subprocess probes with timeouts:
-`lsof` ×2, `ps` ×2, and optionally `cmux top`, `docker ps`, `container list`.
+Pier today: no telemetry or background service API calls; a user-opened preview
+can load its page and referenced subresources. The only disk writes are
+`UserDefaults` UI prefs (panel size, scope chip, preview width) and Pier's
+protected rotating log. Bounded subprocess probes with timeouts: `lsof` ×2,
+`ps` ×2, and optionally `cmux top`, `docker ps`, `container list`.
 
 Two things have moved since this was written and are worth stating plainly:
 Pier now reads **full command lines** (`ps -axo command=`) for harness
@@ -202,10 +208,10 @@ live log tail — all things menus are hostile to. **Recommendation: keep the
 The evidence says the menu route costs a rewrite plus a permanent caching and
 measurement burden, to fix one cosmetic issue.
 
-## 12. Three status-item-invisibility repairs Pier lacks — [adopted]
+## 12. Three adopted status-item-invisibility repairs — [adopted]
 
 Item 6 above covers *one* cause (App Nap dropping the item). CodexBar defends
-against three more, each a separate file, and Pier has none of them:
+against three more, all now implemented in `StatusItemRepair.swift`:
 
 1. **Stale "hidden" flag** — `MenuBarStatusItemDefaultsRepair`. macOS persists
    `NSStatusItem VisibleCC <autosaveName> = false`; once set, the item never
@@ -220,9 +226,9 @@ against three more, each a separate file, and Pier has none of them:
    `x ≈ 0`, `maxY <= 0`, outside every display's bounds. Detecting that is the
    difference between "my icon is missing" and "the system hid my icon".
 
-All three are pure, testable functions over `UserDefaults` values or
-`CGWindowList` records. Worth porting more or less verbatim — Pier already has
-the `CGWindowListCopyWindowInfo` plumbing in `MenuBarVisibility.swift`.
+All three are pure, tested functions over `UserDefaults` values or
+`CGWindowList` records. Pier reuses its existing
+`CGWindowListCopyWindowInfo` plumbing in `MenuBarVisibility.swift`.
 
 ## 13. Probes take their inputs as parameters — [adopted]
 
@@ -245,14 +251,13 @@ Their evidence structs also conform to `CustomStringConvertible` with a single
 dense line (`visible=…,button=…,window=…,width=18.0`), so the same value serves
 the assertion and the diagnostic. Pier's probes print ad-hoc strings instead.
 
-## 14. Settle delays beat continuous polling — [adopted, for the visibility watch]
+## 14. A stable panel beats following an auto-hidden bar — [decided]
 
-Pier's menu bar follow loop polls every 0.5s for the panel's lifetime.
-CodexBar reacts to screen-parameter changes and re-checks with **staged delays**
-— `screenChangeCheckDelay = 750ms`, then `screenChangeFollowUpDelay = 2s` —
-because status item placement settles asynchronously after a display change.
-Event + two settle checks is strictly less work than a timer, and catches the
-case a single immediate check misses.
+Pier briefly used a 0.5-second follow loop, then removed it. A custom panel
+cannot hold an auto-hidden menu bar open, and chasing the changing bar position
+made the panel jump. Pier now anchors once when opened and stays still. The
+`--watch-menubar` diagnostic remains useful for observing visibility signals;
+`--probe-panel-stable` verifies the chosen behavior.
 
 ## 15. Explain, deep-link, then stop nagging — [future]
 
@@ -268,13 +273,13 @@ detect but not fix. Immediate candidate: the notification-permission denial
 
 - **Tests:** CodexBar has 663 test files, **647 on swift-testing** (`import
   Testing`, `@Test`, `#expect`, backticked sentence names) against 5 on XCTest.
-  Pier's 204 tests are all XCTest. Migration is optional; the naming convention
+  Pier's suite uses XCTest. Migration is optional; the naming convention
   (`@Test func \`flags visible item without attached window\`()`) is worth
   stealing regardless — it reads like the sentence the test is proving.
 - **Lint:** they run `swiftformat` + `swiftlint --strict` with checked-in
-  `.swiftformat` / `.swiftlint.yml`, and AGENTS.md requires `make check` before
-  handoff. Pier claims "swift-format-compatible style" in CLAUDE.md but nothing
-  enforces it — and none of the three tools is installed on this machine.
+  `.swiftformat` / `.swiftlint.yml`. Pier uses Xcode's bundled `swift-format`
+  with a checked-in `.swift-format`; `make lint` enforces it and `make check`
+  combines lint with the full test suite.
 - **`@Observable`:** their agent rules mandate `@Observable` + `@Bindable` over
   `ObservableObject`/`@StateObject`. **Blocked for Pier**: `@Observable` needs
   macOS 14 and Pier targets `.macOS(.v13)`. Revisit only if the floor rises.

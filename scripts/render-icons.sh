@@ -4,7 +4,7 @@
 #   assets/app-icon.svg  -> assets/Pier.iconset/* -> assets/Pier.icns
 #
 # Backends, in preference order: rsvg-convert, Chrome headless,
-# Playwright (from personal-agent's node_modules), qlmanage. Nothing is installed.
+# Playwright (set PIER_PLAYWRIGHT_NODE_MODULES), qlmanage. Nothing is installed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

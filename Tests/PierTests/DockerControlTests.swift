@@ -218,3 +218,73 @@ final class AppleControlTests: XCTestCase {
       AppleControl.reclaimableSummary(AppleControl.parseDiskUsage(output)), "Images 600MB")
   }
 }
+
+/// "Unreachable" isn't one condition. A stopped daemon and a daemon whose API
+/// is refusing both fail `docker ps`, but only the first is fixed by Start —
+/// and reporting "not running" for an engine that is plainly running sends you
+/// looking in the wrong place. All strings below are verbatim from a real
+/// Docker Desktop failure on this machine.
+final class EngineFaultTests: XCTestCase {
+  private func result(_ output: String, exit: Int32 = 1) -> ProcessRunner.Result {
+    ProcessRunner.Result(stdout: "", stderr: output, exitCode: exit, timedOut: false)
+  }
+
+  /// Docker Desktop's proxy answered the socket but couldn't reach dockerd in
+  /// the VM ("no route to host"), so every API call 500s. Docker is running;
+  /// Start does nothing. This is the case that cost a live debugging session.
+  func testAPIErrorIsFailingNotNotRunning() {
+    let real = """
+      request returned 500 Internal Server Error for API route and version \
+      http://%2FUsers%2Fshawn%2F.docker%2Frun%2Fdocker.sock/v1.55/containers/json, \
+      check if the server supports the requested API version
+      """
+    let fault = DockerControl.fault(from: result(real), cliInstalled: true)
+    XCTAssertEqual(fault?.headline, "not responding")
+    XCTAssertNotNil(fault?.detail)
+    XCTAssertTrue(fault?.detail?.contains("500 Internal Server Error") == true)
+  }
+
+  /// The genuinely-stopped case keeps the old wording, because Start is right.
+  func testDaemonDownIsNotRunning() {
+    let real = """
+      Cannot connect to the Docker daemon at unix:///var/run/docker.sock. \
+      Is the docker daemon running?
+      """
+    XCTAssertEqual(DockerControl.fault(from: result(real), cliInstalled: true), .notRunning)
+    XCTAssertNil(DockerControl.fault(from: result(real), cliInstalled: true)?.detail)
+  }
+
+  func testNoOutputAtAllIsNotRunning() {
+    XCTAssertEqual(DockerControl.fault(from: result(""), cliInstalled: true), .notRunning)
+  }
+
+  func testMissingCLIIsNotRunning() {
+    XCTAssertEqual(DockerControl.fault(from: nil, cliInstalled: false), .notRunning)
+  }
+
+  /// A timeout is not the same as a refusal — the CLI never answered.
+  func testTimeoutIsFailing() {
+    let timedOut = ProcessRunner.Result(stdout: "", stderr: "", exitCode: 9, timedOut: true)
+    let fault = DockerControl.fault(from: timedOut, cliInstalled: true)
+    XCTAssertEqual(fault?.headline, "not responding")
+  }
+
+  func testLaunchFailureIsFailing() {
+    let fault = DockerControl.fault(from: nil, cliInstalled: true)
+    XCTAssertEqual(fault?.headline, "not responding")
+    XCTAssertEqual(fault?.detail, "The docker CLI could not be launched.")
+  }
+
+  func testHealthyEngineHasNoFault() {
+    let ok = ProcessRunner.Result(stdout: "web\n", stderr: "", exitCode: 0, timedOut: false)
+    XCTAssertNil(DockerControl.fault(from: ok, cliInstalled: true))
+  }
+
+  /// Engine errors run long and repeat the socket path; the row is 340pt wide.
+  func testDetailIsOneTrimmedLine() {
+    let long = String(repeating: "x", count: 300) + "\nsecond line"
+    let fault = DockerControl.fault(from: result(long), cliInstalled: true)
+    XCTAssertEqual(fault?.detail?.count, 141)  // 140 + ellipsis
+    XCTAssertFalse(fault?.detail?.contains("second line") == true)
+  }
+}

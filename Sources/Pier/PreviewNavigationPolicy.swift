@@ -4,11 +4,10 @@ import Foundation
 ///
 /// Without this, the preview would follow any redirect the previewed page asked
 /// for — a `302`, a `<meta refresh>`, or `location = "https://…"` — and Pier
-/// would happily make requests to an arbitrary external host. That contradicts
-/// the README's stated posture ("the only network activity is the inline
-/// preview's `WKWebView` loading the localhost URL you clicked"), and the pages
-/// involved are exactly the untrusted kind: whatever happens to be listening on
-/// a port, including something an agent started.
+/// would happily navigate to an arbitrary external host. The pages involved are
+/// exactly the untrusted kind: whatever happens to be listening on a port,
+/// including something an agent started. This policy covers navigation, not
+/// subresource requests made by an allowed page.
 ///
 /// The rule is same-host, plus loopback. Pier picks the host it asks for; the
 /// page doesn't get to change it.

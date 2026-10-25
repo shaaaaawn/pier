@@ -35,10 +35,9 @@ enum PortSort: String, CaseIterable, Identifiable {
 /// things that look like web servers, which is what you open Pier to find.
 ///
 /// Deliberately heuristic-only: identifying a real HTTP server would mean
-/// connecting to every port, and Pier makes **no outbound requests** — see the
-/// README's security posture. Guessing from the port and the process name is
-/// honest about being a guess; probing would break a stated contract and could
-/// trigger side effects on someone's endpoint.
+/// connecting to every port. Pier never probes listeners just to classify them;
+/// guessing from the port and process name is honest about being a guess, while
+/// probing could trigger side effects on someone's endpoint.
 enum ActivityRank {
   /// Ports that are conventionally a dev/web server. Not exhaustive and not
   /// meant to be — it's a ranking nudge, not a classification.

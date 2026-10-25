@@ -244,6 +244,11 @@ final class StatusCondensationTests: XCTestCase {
       ("Up Less than a second (health: starting)", "up <1s (starting)"),
       ("Up 5 months", "up 5mo"),
       ("Created", "Created"),
+      // Docker's fuzzy durations. Shortening " minute" first turned
+      // "Up About a minute" into "up About am", seen live on a real container.
+      ("Up About a minute (healthy)", "up ~1m (healthy)"),
+      ("Up About an hour", "up ~1h"),
+      ("Exited (0) about a minute ago", "exited 0, about 1m ago"),
     ]
     for (input, expected) in cases {
       XCTAssertEqual(ActivityParser.condenseStatus(input), expected, "for \(input)")
