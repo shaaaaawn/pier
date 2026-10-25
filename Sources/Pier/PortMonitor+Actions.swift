@@ -14,7 +14,21 @@ import Foundation
 extension PortMonitor {
   // MARK: - Actions
 
+  /// Whether a pid may be signalled at all. `kill()` gives non-positive pids
+  /// special meanings: 0 is our own process group, and **-1 is every process
+  /// this user owns** — `kill(-1, SIGKILL)` would take down every app on the
+  /// desktop. pid 1 is launchd. No probe produces these today (`ps -ax` omits
+  /// pid 0, lsof reports real pids), but `Int32("-1")` parses happily, so one
+  /// malformed line away from a disaster is not a margin worth keeping.
+  static func isSignalable(_ pid: Int32) -> Bool {
+    pid > 1
+  }
+
   func terminate(_ pid: Int32, force: Bool = false) {
+    guard Self.isSignalable(pid) else {
+      PierLog.shared.log("refused to signal pid \(pid): not a real process id")
+      return
+    }
     PierLog.shared.log("kill pid \(pid) with \(force ? "SIGKILL" : "SIGTERM")")
     // One pid can hold several ports; each becomes its own stop event.
     for entry in entries where entry.pid == pid {
@@ -125,7 +139,13 @@ extension PortMonitor {
     case .mcp:
       PierLog.shared.log("kill \(entry.pids.count) pid(s) for MCP row \(entry.name)")
       expect(.stopped, subject: .mcp(entry.name))
-      for pid in entry.pids { kill(pid, SIGTERM) }
+      for pid in entry.pids {
+        guard Self.isSignalable(pid) else {
+          PierLog.shared.log("refused to signal pid \(pid): not a real process id")
+          continue
+        }
+        kill(pid, SIGTERM)
+      }
       DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.refresh() }
     case .docker, .apple:
       let path = entry.kind == .docker ? dockerPath : containerPath
@@ -142,7 +162,9 @@ extension PortMonitor {
   }
 
   func isAlive(_ pid: Int32) -> Bool {
-    kill(pid, 0) == 0
+    // kill(0/-1, 0) "succeeds" for the process group / every process, which
+    // would report a pid that never existed as alive.
+    Self.isSignalable(pid) && kill(pid, 0) == 0
   }
 
   /// Full command line for hover tooltips, cached per pid.
