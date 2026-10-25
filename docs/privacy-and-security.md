@@ -28,6 +28,11 @@ Pier performs bounded local queries:
 - `lsof` for listening TCP and UDP sockets;
 - `ps` for process ancestry, CPU, memory, users, and command lines;
 - optionally, `cmux top` for workspace and surface attribution;
+- `proc_pidinfo` for the tty and working directory of a Ghostty or Terminal
+  tab's shell, to group its ports by tab;
+- only when you open the logs for a port in a Terminal.app tab, that tab's
+  scrollback, through `osascript` and Terminal's AppleScript `history`. macOS
+  asks for Automation permission the first time;
 - optionally, Docker and Apple `container` commands for engine and workload
   state.
 
@@ -52,8 +57,14 @@ record full command lines, environment variables, or raw process scans.
 Failure text is limited to its first line, capped at 200 characters, and passed
 through credential-shaped value redaction.
 
-Container and cmux logs shown in the panel are bounded in memory and are never
-written by Pier.
+Container, cmux, and Terminal logs shown in the panel are bounded in memory and
+are never written by Pier.
+
+Terminal scrollback is whatever the tab printed, which can include secrets a
+command echoed. Pier reads it only while that row's log drawer is open, never on
+the refresh timer, and never for a tab you haven't opened. The AppleScript is
+fixed text; the tty is passed as an argument, not spliced into the script. You
+can revoke access in System Settings → Privacy & Security → Automation.
 
 ## Process execution
 

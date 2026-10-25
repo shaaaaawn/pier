@@ -17,6 +17,9 @@ struct ProbeOutput {
   var commandLines: String = ""
   /// nil when cmux isn't installed or refused the socket.
   var cmux: CmuxSnapshot?
+  /// tty + working directory of a terminal tab's session leader. libproc in a
+  /// real refresh; tests and fixtures supply a table or nothing.
+  var terminalInfo: @Sendable (Int32) -> TerminalSessionInfo? = { _ in nil }
 }
 
 /// The assembled result, plus the intermediate tables the caller still needs.
@@ -41,7 +44,8 @@ enum MonitorAssembly {
     let labels = CommandLabelCache(commands)
     for i in entries.indices {
       entries[i].attribution = Attributor.attribute(
-        entry: entries[i], table: table, cmux: probe.cmux, labels: labels)
+        entry: entries[i], table: table, cmux: probe.cmux, labels: labels,
+        terminalInfo: probe.terminalInfo)
       entries[i].usage = table.usage(for: entries[i].pid)
       // Kept alongside the label so the log panel can read that surface's
       // scrollback — the only way a dev server's own output is readable from

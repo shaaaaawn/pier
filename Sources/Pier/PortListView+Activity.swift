@@ -302,6 +302,9 @@ extension PortListView {
     if group.title.hasPrefix("cmux · ") {
       Image(systemName: "rectangle.split.3x1")
         .font(.system(size: 9))
+    } else if case .terminal = group.rows.first?.entries.first?.attribution {
+      Image(systemName: "terminal")
+        .font(.system(size: 9))
     } else if let iconName = Attributor.iconName(forHarnessLabel: group.title),
       let image = HarnessIcons.image(named: iconName)
     {

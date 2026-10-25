@@ -24,5 +24,7 @@
   <true/>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Pier reads a Terminal tab's scrollback only when you open the logs for a port running in it.</string>
 </dict>
 </plist>

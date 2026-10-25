@@ -86,7 +86,7 @@ enum ActivityRank {
     if entry.attribution == .system { score -= 1_500 }
     // Yours, and traceable to an agent or a cmux surface.
     switch entry.attribution {
-    case .cmux, .harness: score += 300
+    case .cmux, .harness, .terminal: score += 300
     case .system, .none: break
     }
     // Recent peak, not the current sample: a compile spike two minutes ago is

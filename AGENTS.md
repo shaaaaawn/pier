@@ -43,6 +43,7 @@ found:
 | `--print-activity` | live Docker / Apple Containers / Simulators / MCP detection, with usage |
 | `--print-memory` | RAM / swap glance, pressure + menu bar tint, disk free — live, then fixtures |
 | `--render-fixture-simulators <dir>` | the Simulators section at 340 and 440 pt, no device needed |
+| `--render-fixture-terminals <dir>` | Ghostty / Terminal tab groups at 340 and 440 pt |
 | `--print-docker` / `--print-apple` | engine state + reclaimable space (read-only, never prunes) |
 | `--print-cmux` | whether workspace grouping can work, and why not |
 | `--probe-anchor` | where the panel landed vs its menu bar icon |
@@ -187,6 +188,12 @@ Do not re-learn these. Each has a test locking it in.
     exported under the selector WebKit calls. The preview's navigation policy
     silently stopped running. Treat that warning as an error on any `@objc`
     delegate. `testControllerExposesTheNavigationPolicyHook` pins this one.
+19. **Terminal's Automation grant doesn't survive a rebuild.** macOS keys the
+    Apple Events permission to the app's code signature, and `make build`
+    ad-hoc signs a new one each time — so after a rebuild the Terminal log
+    drawer can report "not allowed" again, or macOS asks again. Re-grant in
+    System Settings → Privacy & Security → Automation. Only a person can click
+    Allow; don't report the Terminal tail as working until one did.
 
 ## Sorting
 

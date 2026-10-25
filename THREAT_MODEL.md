@@ -11,6 +11,7 @@ Pier is a macOS menu bar application running as the logged-in user. It:
 
 - inventories listening ports and local processes with `lsof` and `ps`;
 - optionally queries cmux, Docker, and Apple Containers;
+- on request, reads one Terminal.app tab's scrollback through AppleScript;
 - displays process, container, and in-memory log data;
 - previews a user-selected local or LAN service in a `WKWebView`; and
 - performs user-requested process, container, and prune actions.
@@ -43,7 +44,7 @@ The assets requiring protection are:
 - process command lines, which may contain credentials despite best practice;
 - the inventory of local ports, processes, workspaces, containers, and MCP
   servers;
-- container and cmux log content shown in the panel;
+- container, cmux, and Terminal tab log content shown in the panel;
 - the integrity and availability of the user's processes and containers;
 - container images, caches, networks, and volumes affected by prune actions;
 - the user's intent when starting, stopping, killing, or pruning resources; and
@@ -145,8 +146,11 @@ Mitigations:
 - credential-shaped assignments are redacted as a backstop;
 - error text is restricted to its first line and 200 characters;
 - the log rotates at 512 KB and retains one previous file; and
-- displayed container and cmux logs are bounded in memory and never persisted
-  by Pier.
+- displayed container, cmux, and Terminal logs are bounded in memory and never
+  persisted by Pier;
+- Terminal scrollback is read only while its log drawer is open, by a fixed
+  AppleScript that takes the tty as `argv`, and only after the user grants
+  Automation permission.
 
 Residual risk: resource names, event history, and sanitized error text can still
 be sensitive. Redaction is heuristic and is not permission to log untrusted

@@ -370,13 +370,16 @@ extension PortListView {
     } else if case .cmux = attribution {
       Image(systemName: "rectangle.split.3x1")
         .font(.system(size: 9))
+    } else if case .terminal = attribution {
+      Image(systemName: "terminal")
+        .font(.system(size: 9))
     }
   }
 
   func badgeColor(_ attribution: Attribution) -> Color {
     switch attribution {
     case .cmux: return .purple
-    case .harness: return .teal
+    case .harness, .terminal: return .teal
     case .system: return Color(nsColor: .tertiaryLabelColor)
     case .none: return .gray
     }

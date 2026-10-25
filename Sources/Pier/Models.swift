@@ -11,6 +11,8 @@ enum Attribution: Equatable {
   case cmux(workspace: String, surface: String, harness: String?)
   /// Attributed to a known agent harness / terminal in the ancestor chain.
   case harness(String)
+  /// A Ghostty / Terminal tab, told apart by its working directory and tty.
+  case terminal(TerminalSession)
   /// Root-owned process or privileged port (< 1024).
   case system
   /// No attribution found.
@@ -25,6 +27,7 @@ enum Attribution: Equatable {
       }
       return parts.joined(separator: " · ")
     case .harness(let name): return name
+    case .terminal(let session): return session.title
     case .system: return "system"
     case .none: return "local"
     }
@@ -34,6 +37,7 @@ enum Attribution: Equatable {
     switch self {
     case .cmux(let workspace, _, _): return "cmux · \(workspace)"
     case .harness(let name): return name
+    case .terminal(let session): return session.title
     case .system: return "System"
     case .none: return "Other"
     }
@@ -47,6 +51,8 @@ enum Attribution: Equatable {
       return harness.flatMap { Attributor.iconName(forHarnessLabel: $0) }
     case .harness(let name):
       return Attributor.iconName(forHarnessLabel: name)
+    case .terminal(let session):
+      return Attributor.iconName(forHarnessLabel: session.app.label)
     case .system, .none:
       return nil
     }
@@ -91,14 +97,14 @@ enum Attribution: Equatable {
     switch self {
     // Generic buckets: the header ("Other" / "System") already says it.
     case .system, .none: return nil
-    case .cmux, .harness: return full
+    case .cmux, .harness, .terminal: return full
     }
   }
 
   /// Lower sorts first: attributed groups, then unattributed, then system.
   var groupRank: Int {
     switch self {
-    case .cmux, .harness: return 0
+    case .cmux, .harness, .terminal: return 0
     case .none: return 1
     case .system: return 2
     }
