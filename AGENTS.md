@@ -1,6 +1,9 @@
-# CLAUDE.md
+# AGENTS.md
 
-Guidance for Claude Code working in this repository.
+Guidance for coding agents (Claude Code, Codex, Cursor, …) working in this
+repository. This is the only agent-instruction file: don't add a `CLAUDE.md`
+beside it — Claude Code reads `AGENTS.md` only when no `CLAUDE.md` exists, so
+one would silently replace this file for it.
 
 ## What this is
 
@@ -36,7 +39,8 @@ found:
 | Probe | Answers |
 |---|---|
 | `--print-groups` | the exact sections/rows the panel would show (attribution end-to-end) |
-| `--print-activity` | live Docker / Apple Containers / MCP detection |
+| `--print-activity` | live Docker / Apple Containers / Simulators / MCP detection, with usage |
+| `--print-memory` | RAM / swap glance, pressure + menu bar tint, disk free — live, then fixtures |
 | `--print-docker` / `--print-apple` | engine state + reclaimable space (read-only, never prunes) |
 | `--print-cmux` | whether workspace grouping can work, and why not |
 | `--probe-anchor` | where the panel landed vs its menu bar icon |

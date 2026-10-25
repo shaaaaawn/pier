@@ -286,7 +286,7 @@ detect but not fix. Immediate candidate: the notification-permission denial
 
 ## 17. Agent-instruction conventions worth borrowing — [adopted]
 
-Their `AGENTS.md` is 48 lines — a fraction of Pier's `CLAUDE.md`, because Pier's
+Their `AGENTS.md` is 48 lines — a fraction of Pier's `AGENTS.md`, because Pier's
 carries a traps list that is the genuinely load-bearing part. Two rules there
 that Pier's does not state explicitly:
 
