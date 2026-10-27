@@ -235,6 +235,25 @@ final class MemoryMonitor: ObservableObject {
   /// Published only when the displayed whole percent changes.
   @Published private(set) var cpu: Double?
   private var cpuBaseline: CPUTicks?
+  /// CPU temperatures and fans, from the SMC. nil when the machine doesn't
+  /// expose recognisable sensors — the glance then shows CPU alone.
+  @Published private(set) var temperature: TemperatureReading?
+  /// Low…high over the last `rangeWindow`, for the bands on the footer lines.
+  @Published private(set) var temperatureRange: ClosedRange<Double>?
+  @Published private(set) var cpuRange: ClosedRange<Double>?
+  static let rangeWindow: TimeInterval = 30 * 60
+  private var temperatureHistory = RollingRange(window: MemoryMonitor.rangeWindow)
+  private var cpuHistory = RollingRange(window: MemoryMonitor.rangeWindow)
+  /// Once a minute, panel open or not: one CPU-tick read and a few cached SMC
+  /// keys (~1 ms, off main), so "last 30 min" means the last 30 minutes rather
+  /// than "while the panel happened to be open".
+  static let backgroundInterval: TimeInterval = 60
+  private var backgroundTimer: Timer?
+  private let sensors: SensorSampler?
+  /// A reading is ~40 SMC calls (~10 ms, off main): every third 2 s tick is
+  /// plenty for a value that moves over seconds.
+  static let temperatureInterval: TimeInterval = 6
+  private var lastTemperatureRead: TimeInterval?
   static let diskInterval: TimeInterval = 60
   private var lastDiskRead: TimeInterval?
 
@@ -256,6 +275,7 @@ final class MemoryMonitor: ObservableObject {
     host = mach_host_self()
     isFixed = false
     thermal = .current
+    sensors = SensorSampler()
     // The source only reports *changes*, so read the current level once.
     pressure = Self.readPressure()
     let source = DispatchSource.makeMemoryPressureSource(
@@ -276,12 +296,23 @@ final class MemoryMonitor: ObservableObject {
     ) { [weak self] _ in
       MainActor.assumeIsolated { self?.updateThermal(.current) }
     }
+    let background = Timer(timeInterval: Self.backgroundInterval, repeats: true) {
+      [weak self] timer in
+      guard let self else { return timer.invalidate() }
+      // Scheduled on RunLoop.main below, so this block always fires on main.
+      MainActor.assumeIsolated { self.backgroundTick() }
+    }
+    background.tolerance = Self.backgroundInterval * 0.25
+    RunLoop.main.add(background, forMode: .common)
+    backgroundTimer = background
+    backgroundTick()
   }
 
   /// Fixture renders: a fixed value, never sampled, so PNGs stay reproducible.
   init(
     fixed: MemorySnapshot, disk: DiskSnapshot? = nil, thermal: ThermalLevel = .nominal,
-    cpu: Double? = nil
+    cpu: Double? = nil, cpuRange: ClosedRange<Double>? = nil,
+    temperature: TemperatureReading? = nil, temperatureRange: ClosedRange<Double>? = nil
   ) {
     host = mach_host_self()
     isFixed = true
@@ -290,7 +321,11 @@ final class MemoryMonitor: ObservableObject {
     self.disk = disk
     self.thermal = thermal
     self.cpu = cpu
+    self.cpuRange = cpuRange
+    self.temperature = temperature
+    self.temperatureRange = temperatureRange
     pressureSource = nil
+    sensors = nil
   }
 
   /// The timer can't be invalidated here: deinit is nonisolated and `timer` is
@@ -301,8 +336,9 @@ final class MemoryMonitor: ObservableObject {
     mach_port_deallocate(mach_task_self_, host)
   }
 
-  /// Sample only while someone can see it. Nothing runs while the panel is
-  /// closed — not even the pressure sysctl.
+  /// Sample only while someone can see it. While the panel is closed only the
+  /// once-a-minute `backgroundTick` runs (CPU + temperature, for the 30-minute
+  /// ranges) — not the memory counters, not even the pressure sysctl.
   func setActive(_ active: Bool) {
     guard !isFixed else { return }
     timer?.invalidate()
@@ -348,7 +384,16 @@ final class MemoryMonitor: ObservableObject {
     updatePressure(next.pressure)
     sampleCPU()
     updateThermal(.current)
+    readTemperature()
     readDiskIfDue(now: now)
+  }
+
+  /// The minute tick. While the panel is open its own 2 s sampling already
+  /// covers this.
+  private func backgroundTick() {
+    guard !isFixed, timer == nil else { return }
+    sampleCPU()
+    readTemperature()
   }
 
   private func sampleCPU() {
@@ -356,6 +401,33 @@ final class MemoryMonitor: ObservableObject {
     defer { cpuBaseline = ticks }
     guard let usage = CPULoad.usage(previous: cpuBaseline, current: ticks) else { return }
     if cpu.map(CPULoad.format) != CPULoad.format(usage) { cpu = usage }
+    cpuHistory.add(usage, at: ProcessInfo.processInfo.systemUptime)
+    let range = cpuHistory.range
+    if range.map(Self.percentKey) != cpuRange.map(Self.percentKey) { cpuRange = range }
+  }
+
+  private static func percentKey(_ r: ClosedRange<Double>) -> [Int] {
+    [Int((r.lowerBound * 100).rounded()), Int((r.upperBound * 100).rounded())]
+  }
+
+  private func readTemperature() {
+    let now = ProcessInfo.processInfo.systemUptime
+    if let last = lastTemperatureRead, now - last < Self.temperatureInterval { return }
+    lastTemperatureRead = now
+    sensors?.read { [weak self] reading in
+      MainActor.assumeIsolated { self?.apply(reading) }
+    }
+  }
+
+  func apply(_ reading: TemperatureReading?) {
+    guard let reading else { return }
+    if temperature?.displayKey != reading.displayKey { temperature = reading }
+    temperatureHistory.add(reading.cpuAverage, at: ProcessInfo.processInfo.systemUptime)
+    let range = temperatureHistory.range
+    let key = { (r: ClosedRange<Double>) in
+      [Int(r.lowerBound.rounded()), Int(r.upperBound.rounded())]
+    }
+    if range.map(key) != temperatureRange.map(key) { temperatureRange = range }
   }
 
   func updateThermal(_ level: ThermalLevel) {

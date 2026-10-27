@@ -129,23 +129,43 @@ extension MemoryFormat {
   }
 }
 
-/// The footer's heat glance: a thermometer in macOS's thermal colour plus
-/// whole-machine CPU — "CPU 34%", and "· Hot" once macOS starts throttling.
-/// The tooltip names who's doing it.
+/// The footer's heat glance: temperature and CPU, each as a value on a small
+/// line — "current against its last-30-minutes low/high, on a fixed scale".
+/// The line answers "is that a lot?" at a glance: CPU's track ends at 100%
+/// (every core busy), temperature's runs 30–105 °C.
 ///
-/// Observes `MemoryMonitor` like the other glances, so a 2 s tick redraws this
-/// view alone. `busiest` comes from the panel's own refresh and changes only
-/// when the top three do.
+/// Observes `MemoryMonitor` like the other glances, so a tick redraws this
+/// view alone. `busiest` comes from the panel's own refresh.
 struct CPUGlanceView: View {
   @ObservedObject var monitor: MemoryMonitor
   let busiest: [BusyProcess]
 
+  static let temperatureScale: ClosedRange<Double> = 30...105
+  static let cpuScale: ClosedRange<Double> = 0...1
+
   var body: some View {
     if let cpu = monitor.cpu {
       let thermal = monitor.thermal
+      let tooltip = MemoryFormat.heatTooltip(
+        cpu: cpu, cpuRange: monitor.cpuRange, thermal: thermal,
+        temperature: monitor.temperature, temperatureRange: monitor.temperatureRange,
+        busiest: busiest)
       ViewThatFits(in: .horizontal) {
-        label(cpu: cpu, thermal: thermal, showState: thermal.isHot)
-        label(cpu: cpu, thermal: thermal, showState: false)
+        label(cpu: cpu, thermal: thermal, lines: true)
+        label(cpu: cpu, thermal: thermal, lines: false)
+        // One number: the temperature if there is one, else CPU.
+        HStack(spacing: 3) {
+          Image(systemName: Self.symbol(thermal))
+            .foregroundStyle(Self.tint(thermal))
+          Text(
+            monitor.temperature.map { TemperatureReading.format($0.cpuAverage) }
+              ?? CPULoad.format(cpu)
+          )
+          .monospacedDigit()
+        }
+        .font(.system(size: 10))
+        .foregroundStyle(.secondary)
+        .fixedSize()
         // Narrowest: the thermometer alone. Strain lengthens the memory text,
         // so this is exactly when the room runs out — and when the colour
         // matters most.
@@ -154,22 +174,33 @@ struct CPUGlanceView: View {
           .foregroundStyle(Self.tint(thermal))
         Color.clear.frame(width: 0, height: 0)
       }
-      .help(MemoryFormat.heatTooltip(cpu: cpu, thermal: thermal, busiest: busiest))
+      .help(tooltip)
       .accessibilityElement(children: .ignore)
-      .accessibilityLabel(MemoryFormat.heatTooltip(cpu: cpu, thermal: thermal, busiest: busiest))
+      .accessibilityLabel(tooltip)
     }
   }
 
-  private func label(cpu: Double, thermal: ThermalLevel, showState: Bool) -> some View {
+  private func label(cpu: Double, thermal: ThermalLevel, lines: Bool) -> some View {
     HStack(spacing: 3) {
       Image(systemName: Self.symbol(thermal))
         .foregroundStyle(Self.tint(thermal))
-      Text("CPU \(CPULoad.format(cpu))")
-        .monospacedDigit()
-      if showState {
-        Text("· \(thermal.label)")
-          .foregroundStyle(Self.tint(thermal))
+      if let temperature = monitor.temperature {
+        if lines {
+          RangeLine(
+            scale: Self.temperatureScale, band: monitor.temperatureRange,
+            value: temperature.cpuAverage, tint: Self.tint(thermal))
+        }
+        Text(TemperatureReading.format(temperature.cpuAverage))
+          .monospacedDigit()
+        Text("·")
       }
+      Text("CPU")
+      if lines {
+        RangeLine(
+          scale: Self.cpuScale, band: monitor.cpuRange, value: cpu, tint: Self.tint(thermal))
+      }
+      Text(CPULoad.format(cpu))
+        .monospacedDigit()
     }
     .font(.system(size: 10))
     .foregroundStyle(.secondary)
@@ -191,14 +222,77 @@ struct CPUGlanceView: View {
   }
 }
 
+/// A value on a fixed scale, over the band it has covered recently: a faint
+/// track, a stronger band from low to high, and a dot for now. One reading is
+/// a dot with no band — a single point isn't a range.
+struct RangeLine: View {
+  let scale: ClosedRange<Double>
+  let band: ClosedRange<Double>?
+  let value: Double
+  let tint: Color
+
+  static let width: CGFloat = 26
+
+  /// 0…1 along the track, clamped: off-scale readings sit at the ends.
+  static func position(_ v: Double, in scale: ClosedRange<Double>) -> Double {
+    guard scale.upperBound > scale.lowerBound else { return 0 }
+    return min(max((v - scale.lowerBound) / (scale.upperBound - scale.lowerBound), 0), 1)
+  }
+
+  var body: some View {
+    let w = Self.width
+    ZStack(alignment: .leading) {
+      Capsule().fill(Color.secondary.opacity(0.2)).frame(width: w, height: 2)
+      if let band {
+        let lo = Self.position(band.lowerBound, in: scale)
+        let hi = Self.position(band.upperBound, in: scale)
+        Capsule().fill(Color.secondary.opacity(0.55))
+          .frame(width: max(w * (hi - lo), 2), height: 3)
+          .offset(x: w * lo)
+      }
+      Circle().fill(tint == .secondary ? Color.primary.opacity(0.75) : tint)
+        .frame(width: 5, height: 5)
+        .offset(x: w * Self.position(value, in: scale) - 2.5)
+    }
+    .frame(width: w, height: 6)
+  }
+}
+
 extension MemoryFormat {
-  static func heatTooltip(cpu: Double, thermal: ThermalLevel, busiest: [BusyProcess]) -> String {
-    var lines = [
-      "Thermal state: \(thermal.label) — \(thermal.explanation)",
-      "CPU \(CPULoad.format(cpu)) of all \(ProcessInfo.processInfo.activeProcessorCount) cores",
-    ]
+  static func heatTooltip(
+    cpu: Double, cpuRange: ClosedRange<Double>? = nil, thermal: ThermalLevel,
+    temperature: TemperatureReading? = nil, temperatureRange: ClosedRange<Double>? = nil,
+    busiest: [BusyProcess]
+  ) -> String {
+    var lines: [String] = []
+    if let t = temperature {
+      var line =
+        "Temperature \(TemperatureReading.format(t.cpuAverage))C — CPU average of \(t.sensorCount) sensors; hottest core \(TemperatureReading.format(t.cpuMax))"
+      if let gpu = t.gpuAverage { line += "; GPU \(TemperatureReading.format(gpu))" }
+      lines.append(line)
+      if let r = temperatureRange {
+        lines.append(
+          "Last 30 min: low \(TemperatureReading.format(r.lowerBound)), high \(TemperatureReading.format(r.upperBound))"
+        )
+      }
+      if !t.fans.isEmpty {
+        let speeds = t.fans.map { "\(Int($0.rpm.rounded()))" }.joined(separator: " / ")
+        let ceiling = t.fans.map(\.max).max().map { " (max \(Int($0.rounded())))" } ?? ""
+        lines.append("Fans \(speeds) rpm\(ceiling)")
+      }
+    }
+    lines.append("Thermal state: \(thermal.label) — \(thermal.explanation)")
+    var cpuLine =
+      "CPU \(CPULoad.format(cpu)) of all \(ProcessInfo.processInfo.activeProcessorCount) cores "
+      + "(100% = every core busy)"
+    if let r = cpuRange {
+      cpuLine += "; last 30 min \(CPULoad.format(r.lowerBound))–\(CPULoad.format(r.upperBound))"
+    }
+    lines.append(cpuLine)
     if !busiest.isEmpty {
-      lines.append("Busiest (% of one core): " + busiest.map(\.label).joined(separator: ", "))
+      lines.append(
+        "Busiest (% of one core, so up to \(ProcessInfo.processInfo.activeProcessorCount * 100)%): "
+          + busiest.map(\.label).joined(separator: ", "))
     }
     return lines.joined(separator: "\n")
   }

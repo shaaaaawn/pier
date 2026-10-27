@@ -22,6 +22,25 @@ enum MemoryProbe {
     print(
       "menu bar count colour: \(monitor.pressure.tintName) (\(monitor.pressure.label) pressure)")
     print("thermal: \(monitor.thermal.label) — \(monitor.thermal.explanation)")
+    let sampler = SensorSampler()
+    let discovery = Date()
+    if let t = sampler.readNow() {
+      let first = Date().timeIntervalSince(discovery)
+      _ = sampler.readNow()
+      print(
+        "temp:    \(TemperatureReading.format(t.cpuAverage))C average of \(t.sensorCount) CPU sensors, "
+          + "hottest \(TemperatureReading.format(t.cpuMax)), GPU \(t.gpuAverage.map(TemperatureReading.format) ?? "-")"
+      )
+      print(
+        "fans:    \(t.fans.map { "\(Int($0.rpm)) rpm (\(Int($0.min))–\(Int($0.max)))" }.joined(separator: ", "))"
+      )
+      print(
+        String(
+          format: "sensors: discovery %.0f ms (once), then %.2f ms per reading", first * 1000,
+          sampler.lastCost * 1000))
+    } else {
+      print("temp:    unavailable (no SMC or no recognisable CPU sensors)")
+    }
     if let cpu = monitor.cpu { print("cpu:     \(CPULoad.format(cpu)) of all cores") }
     let table = ProcessTable.parse(
       ProcessRunner.run("/bin/ps", ["-axo", "pid=,ppid=,%cpu=,rss=,ucomm="], timeout: 5)?.stdout
@@ -37,9 +56,22 @@ enum MemoryProbe {
 
   /// Heat to pair with each memory state, so the footer is graded with the
   /// CPU glance in every state it can show: cool, Hot (throttling), Very hot.
-  static let heat: [String: (thermal: ThermalLevel, cpu: Double)] = [
-    "normal": (.nominal, 0.22), "warning": (.serious, 0.78), "critical": (.critical, 0.96),
-  ]
+  static let heat:
+    [String: (
+      thermal: ThermalLevel, cpu: Double, cpuRange: ClosedRange<Double>, celsius: Double,
+      range: ClosedRange<Double>
+    )] = [
+      "normal": (.nominal, 0.22, 0.08...0.41, 58, 47...66),
+      "warning": (.serious, 0.78, 0.30...0.92, 88, 61...93),
+      "critical": (.critical, 0.96, 0.52...1.0, 99, 72...101),
+    ]
+
+  static func reading(_ celsius: Double) -> TemperatureReading {
+    TemperatureReading(
+      cpuAverage: celsius, cpuMax: celsius + 9, gpuAverage: celsius - 4,
+      fans: [.init(rpm: 2760, min: 1200, max: 5779), .init(rpm: 2980, min: 1200, max: 5779)],
+      sensorCount: 25)
+  }
 
   /// Three states worth grading: a healthy busy Mac (this dev machine's real
   /// shape — heavy compression, no swap), pressure building, and critical with
@@ -94,7 +126,9 @@ enum MemoryProbe {
             \.memoryMonitor,
             MemoryMonitor(
               fixed: snapshot, disk: fixtureDisk, thermal: heat[name]?.thermal ?? .nominal,
-              cpu: heat[name]?.cpu))
+              cpu: heat[name]?.cpu, cpuRange: heat[name]?.cpuRange,
+              temperature: heat[name].map { reading($0.celsius) },
+              temperatureRange: heat[name]?.range))
         let path = "\(dir)/memory-\(name)-\(Int(width)).png"
         guard write(view, size: NSSize(width: width, height: PortListView.panelHeight), to: path)
         else {

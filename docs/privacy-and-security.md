@@ -30,6 +30,11 @@ Pier performs bounded local queries:
 - optionally, `cmux top` for workspace and surface attribution;
 - `proc_pidinfo` for the tty and working directory of a Ghostty or Terminal
   tab's shell, to group its ports by tab;
+- temperatures and fan speeds from the System Management Controller, through
+  IOKit (`AppleSMC`). Read-only — Pier sends only the SMC's read commands —
+  needs no permission, and runs once a minute, or every 6 seconds while the
+  panel is open. Sensor names are undocumented and vary by chip; where none
+  are recognised Pier shows no temperature;
 - `proc_pidinfo` for the working directory of a listening process, then the
   nearest project marker above it (`package.json`, `pyproject.toml`, `.git`, …)
   and the `name` field of its `package.json` (first 64 KB only), to name dev
