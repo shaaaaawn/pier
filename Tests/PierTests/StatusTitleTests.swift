@@ -3,27 +3,32 @@ import XCTest
 
 @testable import Pier
 
-/// The menu bar item's text. Colour lives on the digits only — never on the
-/// button — so the template glyph always draws in the menu bar's own colour.
+/// The menu bar item's text: nothing, unless a mark means something. Colour
+/// lives on the pressure dot only — never on the button — so the template
+/// glyph always draws in the menu bar's own colour.
 final class StatusTitleTests: XCTestCase {
   private func colour(_ title: NSAttributedString, at index: Int = 1) -> NSColor? {
     title.attribute(.foregroundColor, at: index, effectiveRange: nil) as? NSColor
   }
 
-  func testNormalPressureLeavesTheTextUncoloured() {
-    let title = StatusTitle.make(count: 45, unseen: 0, pressure: .normal)
-    XCTAssertEqual(title.string, " 45")
+  /// The usual state: just the glyph. No port count — it said nothing useful.
+  func testQuietItemHasNoText() {
+    XCTAssertEqual(StatusTitle.make(unseen: 0, pressure: .normal).length, 0)
+  }
+
+  func testUnseenEventsAddAPlainBullet() {
+    let title = StatusTitle.make(unseen: 3, pressure: .normal)
+    XCTAssertEqual(title.string, " •")
     XCTAssertNil(colour(title))
   }
 
-  func testPressureColoursTheCountOnly() {
-    let title = StatusTitle.make(count: 45, unseen: 2, pressure: .critical)
-    XCTAssertEqual(title.string, " 45 •")
+  func testPressureAddsAColouredDot() {
+    let title = StatusTitle.make(unseen: 2, pressure: .critical)
+    XCTAssertEqual(title.string, " ● •")
     assertSameColour(colour(title), MemoryPressure.critical.statusTint)
     XCTAssertNil(colour(title, at: title.length - 1), "the unseen bullet keeps the bar's colour")
     assertSameColour(
-      colour(StatusTitle.make(count: 3, unseen: 0, pressure: .warning)),
-      MemoryPressure.warning.statusTint)
+      colour(StatusTitle.make(unseen: 0, pressure: .warning)), MemoryPressure.warning.statusTint)
   }
 
   /// Both modes: a dynamic system colour must resolve to something visible on

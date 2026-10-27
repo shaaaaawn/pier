@@ -62,9 +62,8 @@ enum MemoryPressure: Int, Equatable {
     }
   }
 
-  /// Colour of the menu bar item's port count. **nil at normal**, so it keeps
-  /// the menu bar's own text colour like every other item; colour appears only
-  /// when the kernel says memory is under pressure.
+  /// Colour of the menu bar item's pressure dot. **nil at normal**: no dot at
+  /// all; colour appears only when the kernel says memory is under pressure.
   ///
   /// Each resolves per appearance, measured for at least 3:1 contrast against
   /// both menu bars: the system orange is only 1.9:1 on a light bar (and
