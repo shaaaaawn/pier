@@ -10,12 +10,23 @@ struct LogPanelView: View {
   var cmuxPassword: String?
   /// Fixture hook: static lines instead of launching a real tail.
   var fixtureLines: [String]?
+  /// False while the panel is closed. Closing only orders the panel out — the
+  /// drawer stays mounted, so `onDisappear` never fired and a `docker logs -f`
+  /// kept streaming and laying out lines nobody could see.
+  var active = true
 
   @StateObject private var tailer = LogTailer()
   @State private var isPinned = true
   @State private var copied = false
 
   private var lines: [String] { fixtureLines ?? tailer.lines }
+  /// Identity of `lines[0]`; see `LogTailer.firstLineNumber`.
+  private var firstLine: Int { fixtureLines == nil ? tailer.firstLineNumber : 0 }
+
+  private var numberedLines: [(number: Int, text: String)] {
+    let base = firstLine
+    return lines.enumerated().map { (base + $0.offset, $0.element) }
+  }
 
   var body: some View {
     VStack(spacing: 6) {
@@ -30,6 +41,14 @@ struct LogPanelView: View {
       tailer.start(source: source, toolPath: toolPath, cmuxPassword: cmuxPassword)
     }
     .onDisappear { tailer.stop() }
+    .onChange(of: active) { isActive in
+      guard fixtureLines == nil else { return }
+      if isActive {
+        tailer.start(source: source, toolPath: toolPath, cmuxPassword: cmuxPassword)
+      } else {
+        tailer.stop()
+      }
+    }
   }
 
   // MARK: - Header
@@ -104,24 +123,28 @@ struct LogPanelView: View {
   private var logLines: some View {
     ScrollViewReader { proxy in
       ScrollView {
-        VStack(alignment: .leading, spacing: 1) {
-          ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
-            Text(verbatim: line.isEmpty ? " " : line)
+        // Lazy: only the ~15 visible rows exist, not all 800. Ids are line
+        // numbers, so a new line adds one row instead of renaming every row.
+        LazyVStack(alignment: .leading, spacing: 1) {
+          ForEach(numberedLines, id: \.number) { line in
+            Text(verbatim: line.text.isEmpty ? " " : line.text)
               .font(.system(size: 10, design: .monospaced))
-              .foregroundStyle(tint(for: line))
+              .foregroundStyle(tint(for: line.text))
               .textSelection(.enabled)
               .frame(maxWidth: .infinity, alignment: .leading)
-              .id(index)
+              .id(line.number)
           }
         }
         .padding(8)
       }
       .onChange(of: lines.count) { count in
         guard isPinned, count > 0 else { return }
-        withAnimation(.linear(duration: 0.1)) { proxy.scrollTo(count - 1, anchor: .bottom) }
+        withAnimation(.linear(duration: 0.1)) {
+          proxy.scrollTo(firstLine + count - 1, anchor: .bottom)
+        }
       }
       .onAppear {
-        if let last = lines.indices.last { proxy.scrollTo(last, anchor: .bottom) }
+        if let last = lines.indices.last { proxy.scrollTo(firstLine + last, anchor: .bottom) }
       }
     }
   }

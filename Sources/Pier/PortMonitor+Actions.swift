@@ -24,9 +24,34 @@ extension PortMonitor {
     pid > 1
   }
 
-  func terminate(_ pid: Int32, force: Bool = false) {
+  /// The process started at `expected` (from the row) is the one now at `pid`.
+  /// No recorded start (fixtures, probes) passes; a pid that's gone fails.
+  nonisolated static func isSameProcess(expected: UInt64?, current: UInt64?) -> Bool {
+    guard let expected else { return true }
+    return current == expected
+  }
+
+  /// Start time of `pid` in µs since the epoch, from libproc. Unforgeable by
+  /// the process itself, unlike its name.
+  nonisolated static func startTime(of pid: Int32) -> UInt64? {
+    var info = proc_bsdinfo()
+    let size = Int32(MemoryLayout<proc_bsdinfo>.size)
+    guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size else { return nil }
+    return info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec
+  }
+
+  /// `expectedStart` is the row's `startTime`. Pass it whenever the pid came
+  /// from a row: rows can be up to 30 s old, and signalling a recycled pid
+  /// would kill — and with the follow-up prompt, SIGKILL — an unrelated
+  /// process while the dialog still names the old one.
+  func terminate(_ pid: Int32, force: Bool = false, expectedStart: UInt64? = nil) {
     guard Self.isSignalable(pid) else {
       PierLog.shared.log("refused to signal pid \(pid): not a real process id")
+      return
+    }
+    guard Self.isSameProcess(expected: expectedStart, current: Self.startTime(of: pid)) else {
+      PierLog.shared.log("refused to signal pid \(pid): a different process holds it now")
+      refresh()
       return
     }
     PierLog.shared.log("kill pid \(pid) with \(force ? "SIGKILL" : "SIGTERM")")
@@ -192,10 +217,12 @@ extension PortMonitor {
     }
   }
 
-  func isAlive(_ pid: Int32) -> Bool {
+  func isAlive(_ pid: Int32, expectedStart: UInt64? = nil) -> Bool {
     // kill(0/-1, 0) "succeeds" for the process group / every process, which
     // would report a pid that never existed as alive.
+    // And alive means *the same* process: a recycled pid isn't "still running".
     Self.isSignalable(pid) && kill(pid, 0) == 0
+      && Self.isSameProcess(expected: expectedStart, current: Self.startTime(of: pid))
   }
 
   /// Full command line for hover tooltips, cached per pid.

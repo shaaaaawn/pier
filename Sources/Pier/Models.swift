@@ -125,6 +125,10 @@ struct PortEntry: Identifiable, Equatable {
   /// resolved one — the handle needed to read that surface's scrollback, which
   /// is the only way a dev server's own output becomes readable from outside.
   var cmuxSurfaceRef: String?
+  /// When `pid` started (µs since the epoch), read with the row. A kill checks
+  /// it first: the row can be seconds old, and by then the pid may belong to
+  /// a different process.
+  var startTime: UInt64?
 
   var id: String { "\(pid):\(port):\(proto.rawValue)" }
   var bindSummary: String { bindAddresses.joined(separator: ", ") }

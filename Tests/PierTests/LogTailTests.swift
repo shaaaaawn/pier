@@ -15,7 +15,9 @@ final class LogSourceTests: XCTestCase {
     XCTAssertEqual(LogSource.resolve(activity: apple), .appleContainer(container: "pier-web"))
     // Apple's CLI has no --follow, so it's polled as a snapshot.
     XCTAssertFalse(LogSource.resolve(activity: apple).isStream)
-    XCTAssertEqual(LogSource.resolve(activity: apple).arguments(), ["logs", "pier-web"])
+    XCTAssertEqual(
+      LogSource.resolve(activity: apple).arguments(), ["logs", "-n", "300", "pier-web"],
+      "without -n the CLI prints the whole history on every 2 s poll")
   }
 
   /// MCP servers speak stdio to their harness — there is no log to read, and
