@@ -189,6 +189,9 @@ struct PortListView: View {
     HStack(spacing: 8) {
       if let memoryMonitor {
         MemoryGlanceView(monitor: memoryMonitor)
+        // Heat outranks disk: it changes minute to minute, disk doesn't.
+        CPUGlanceView(monitor: memoryMonitor, busiest: monitor.busiest)
+          .layoutPriority(-0.25)
         DiskGlanceView(monitor: memoryMonitor)
           .layoutPriority(-0.5)
       }

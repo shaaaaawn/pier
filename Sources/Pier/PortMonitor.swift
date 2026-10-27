@@ -24,6 +24,9 @@ final class PortMonitor: ObservableObject {
   @Published var dockerReclaimable: String?
   @Published var appleReclaimable: String?
   @Published private(set) var lastRefresh: Date?
+  /// Heaviest CPU users by name, from the refresh's own `ps` table — the
+  /// "who's making it hot" line in the CPU glance's tooltip.
+  @Published private(set) var busiest: [BusyProcess] = []
   @Published private(set) var isRefreshing = false
 
   /// Fast polling while the menu bar window is open, slow in the background.
@@ -188,11 +191,13 @@ final class PortMonitor: ObservableObject {
 
       let readings = MonitorAssembly.cpuReadings(
         entries: entries, activity: activity, table: table)
+      let busiest = table.busiest()
 
       DispatchQueue.main.async {
         guard let self else { return }
         self.entries = entries
         self.activity = activity
+        if self.busiest != busiest { self.busiest = busiest }
         self.cmuxStatus = cmuxStatus
         // Only transitions are logged — a per-refresh line would bury the
         // interesting events under one entry every 5 seconds.

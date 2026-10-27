@@ -135,6 +135,16 @@ final class MenuBarController: NSObject {
       }
       .store(in: &cancellables)
 
+    memory.$thermal
+      .removeDuplicates()
+      .receive(on: RunLoop.main)
+      .sink { [weak self] level in
+        if level != self?.thermal { PierLog.shared.log("thermal state: \(level.label)") }
+        self?.thermal = level
+        self?.refreshTitle()
+      }
+      .store(in: &cancellables)
+
     memory.$pressure
       .removeDuplicates()
       .receive(on: RunLoop.main)
@@ -194,6 +204,7 @@ final class MenuBarController: NSObject {
 
   private var portCount = 0
   private var memoryPressure: MemoryPressure = .normal
+  private var thermal: ThermalLevel = .nominal
   private var unseenEvents = 0
 
   private func refreshTitle() {
@@ -238,13 +249,14 @@ final class MenuBarController: NSObject {
   /// so, never for "lots of RAM used" (which is normal on macOS). The port
   /// count lives in the tooltip now, not the menu bar.
   private func updateTitle(_ count: Int, unseen: Int) {
-    let title = StatusTitle.make(unseen: unseen, pressure: memoryPressure)
+    let title = StatusTitle.make(unseen: unseen, pressure: memoryPressure, thermal: thermal)
     statusItem.button?.attributedTitle = title
     // Image-only when there's no mark, so the item is just the glyph's width.
     statusItem.button?.imagePosition = title.length == 0 ? .imageOnly : .imageLeading
     var tip = "Pier — \(count) listening port\(count == 1 ? "" : "s")"
     if unseen > 0 { tip += "\n\(unseen) new event\(unseen == 1 ? "" : "s")" }
     if memoryPressure != .normal { tip += "\nMemory pressure: \(memoryPressure.label)" }
+    if thermal.isHot { tip += "\nRunning \(thermal.label.lowercased()): \(thermal.explanation)" }
     statusItem.button?.toolTip = tip
   }
 
