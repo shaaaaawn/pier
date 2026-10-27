@@ -54,6 +54,8 @@ found:
 | `--probe-panel-stable` | that the panel stays where it opened |
 | `--probe-resize` / `--probe-resize-perf` | that the window follows a resize; per-tick cost |
 | `--probe-viewport <url>` | the CSS viewport a real preview gets |
+| `--probe-preview <port> <png>` | the real panel, live data, with that port's preview expanded |
+| `--probe-click <port> <dir>` | real clicks through the non-activating panel while it isn't key; renders after each |
 | `--tail-docker <container>` | that `docker logs --follow` really streams |
 | `--render-fixture*` | layout, without touching the live menu bar |
 
@@ -199,6 +201,14 @@ Do not re-learn these. Each has a test locking it in.
     drawer can report "not allowed" again, or macOS asks again. Re-grant in
     System Settings → Privacy & Security → Automation. Only a person can click
     Allow; don't report the Terminal tail as working until one did.
+
+20. **A non-activating panel eats the first click.** It opens without taking
+    focus from your app, so it often isn't key; AppKit spends that click making
+    it key and delivers nothing — rows needed two clicks, which read as "I
+    can't click my ports". `acceptsFirstMouse` on the NSHostingView does **not**
+    fix it (the click lands on SwiftUI's internal views); `PanelWindow.sendEvent`
+    makes the panel key on mouse-down before AppKit looks. `--probe-click`
+    reproduces it.
 
 ## Sorting
 

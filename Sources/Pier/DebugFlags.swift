@@ -111,6 +111,16 @@ enum DebugFlags {
           to: args[index + 1], scope: args.count > index + 2 ? args[index + 2] : nil)
       }
     }
+    if let index = args.firstIndex(of: "--probe-click"), args.count > index + 2,
+      let port = Int(args[index + 1])
+    {
+      MainActor.assumeIsolated { ClickProbe.run(port: port, dir: args[index + 2]) }
+    }
+    if let index = args.firstIndex(of: "--probe-preview"), args.count > index + 2,
+      let port = Int(args[index + 1])
+    {
+      MainActor.assumeIsolated { PreviewProbe.run(port: port, out: args[index + 2]) }
+    }
     if let index = args.firstIndex(of: "--probe-viewport"), args.count > index + 1 {
       MainActor.assumeIsolated {
         FixtureRenderer.probeViewport(

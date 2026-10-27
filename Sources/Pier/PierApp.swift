@@ -4,8 +4,25 @@ import SwiftUI
 
 /// Borderless panel that still takes key focus, so the search field works.
 /// A plain borderless NSPanel refuses key status by default.
+///
+/// It also acts on the **first** click. The panel is non-activating — it opens
+/// over whatever app you're in without taking focus from it — so it often
+/// isn't key when you click it, and AppKit then spends that click making it
+/// key and delivers nothing: clicking a port to preview it did nothing, and
+/// only a second click worked. `acceptsFirstMouse` on the content view can't
+/// fix it — the click lands on SwiftUI's own internal views (the list's
+/// scroll view), which answer for themselves. Becoming key before AppKit
+/// looks means the click is delivered like any other. Reproduced and verified
+/// with `--probe-click`.
 final class PanelWindow: NSPanel {
   override var canBecomeKey: Bool { true }
+
+  override func sendEvent(_ event: NSEvent) {
+    if event.type == .leftMouseDown || event.type == .rightMouseDown, !isKeyWindow {
+      makeKey()
+    }
+    super.sendEvent(event)
+  }
 }
 
 /// Where the panel goes relative to its menu bar item. Pure geometry, kept
