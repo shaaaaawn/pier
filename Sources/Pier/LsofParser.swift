@@ -71,7 +71,10 @@ enum LsofParser {
       if hex.count == 2, let value = UInt8(hex, radix: 16),
         let scalar = Unicode.Scalar(value) as Unicode.Scalar?
       {
-        out.append(Character(scalar))
+        // Control bytes become "?". A process can put a newline in its own
+        // name; decoded, it would split Pier's log line and let any local
+        // process forge entries ("you stopped …") in the audit log.
+        out.append(value < 0x20 || value == 0x7F ? "?" : Character(scalar))
         rest = after.dropFirst(2)
       } else {
         out += "\\x"

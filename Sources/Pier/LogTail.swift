@@ -59,7 +59,9 @@ enum LogSource: Equatable {
     case .docker(let container):
       return ["logs", "--tail", "\(Self.tailLines)", "--follow", container]
     case .appleContainer(let container):
-      return ["logs", container]
+      // Without -n the CLI prints the container's entire history, and this
+      // runs every 2 s — the whole log materialised as one String each time.
+      return ["logs", "-n", "\(Self.tailLines)", container]
     case .cmuxSurface(let ref, _):
       // Password goes in the environment, never argv — see CmuxAccess.
       return ["read-screen", "--surface", ref, "--scrollback", "--lines", "\(Self.tailLines)"]
@@ -119,14 +121,26 @@ enum LogText {
   /// letting a chatty container grow the panel without bound.
   static let cap = 800
 
+  /// Longest partial line held while waiting for its newline. A stream that
+  /// never sends one (a progress bar, a binary blob) would otherwise grow the
+  /// carry without bound; past this it's emitted as a line of its own.
+  static let maxCarry = 64 * 1024
+
   /// Split a chunk into complete lines plus the leftover partial line — a pipe
   /// chunk can end mid-line, and joining it to the next read is what keeps a
   /// long log line from being torn in two.
   static func split(_ chunk: String, carry: String) -> (lines: [String], carry: String) {
     let combined = carry + chunk
-    guard combined.contains("\n") else { return ([], combined) }
+    guard combined.contains("\n") else {
+      if combined.utf8.count > maxCarry { return ([String(combined.prefix(maxCarry))], "") }
+      return ([], combined)
+    }
     var parts = combined.components(separatedBy: "\n")
-    let remainder = parts.removeLast()  // "" when the chunk ended on a newline
+    var remainder = parts.removeLast()  // "" when the chunk ended on a newline
+    if remainder.utf8.count > maxCarry {
+      parts.append(String(remainder.prefix(maxCarry)))
+      remainder = ""
+    }
     return (parts, remainder)
   }
 
@@ -155,6 +169,11 @@ final class LogTailer: ObservableObject {
   }
 
   @Published private(set) var lines: [String] = []
+  /// Running number of the first line in `lines`: grows as the cap drops old
+  /// lines, so `firstLineNumber + index` is a stable identity for each line.
+  /// Keyed by index alone, every line changed identity whenever one dropped
+  /// off the top, and the view rebuilt all 800 rows per chunk.
+  @Published private(set) var firstLineNumber = 0
   @Published private(set) var state: State = .idle
 
   private var process: Process?
@@ -171,6 +190,7 @@ final class LogTailer: ObservableObject {
     self.source = source
     self.toolPath = toolPath
     lines = []
+    firstLineNumber = 0
     carry = ""
     guard source.isAvailable else {
       state = .ended(nil)
@@ -240,18 +260,24 @@ final class LogTailer: ObservableObject {
   private func finishStream() {
     process?.standardOutput.flatMap { $0 as? Pipe }?.fileHandleForReading.readabilityHandler = nil
     if !carry.isEmpty {
-      lines = LogText.appendCapped(lines, adding: [LogText.stripANSI(carry)])
+      append([LogText.stripANSI(carry)])
       carry = ""
     }
     process = nil
     if state == .reading { state = .ended(lines.isEmpty ? "no output" : nil) }
   }
 
+  private func append(_ new: [String]) {
+    let dropped = max(0, lines.count + new.count - LogText.cap)
+    lines = LogText.appendCapped(lines, adding: new)
+    firstLineNumber += dropped
+  }
+
   private func ingest(_ chunk: String) {
     let (complete, remainder) = LogText.split(chunk, carry: carry)
     carry = remainder
     guard !complete.isEmpty else { return }
-    lines = LogText.appendCapped(lines, adding: complete.map(LogText.stripANSI))
+    append(complete.map(LogText.stripANSI))
   }
 
   private func readSnapshot(

@@ -225,8 +225,10 @@ enum ActivityParser {
         grouped[key] = entry
       } else {
         order.append(key)
+        // The command line is shown on the row and in its tooltip: masked
+        // like the log, since MCP servers are often started with an API key.
         grouped[key] = ActivityEntry(
-          kind: .mcp, name: raw.label, detail: raw.command,
+          kind: .mcp, name: raw.label, detail: PierLog.redact(raw.command),
           pids: [raw.pid], attribution: attribution)
       }
     }

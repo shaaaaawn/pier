@@ -49,7 +49,7 @@ final class PierLog: @unchecked Sendable {
   /// Append one line. Never throws — logging must not be able to break the app,
   /// so a failure disables logging for the session instead of propagating.
   func log(_ message: String) {
-    let line = Self.format(Self.redact(message), at: Date())
+    let line = Self.format(Self.redact(Self.singleLine(message)), at: Date())
     queue.async { [weak self] in
       guard let self, self.enabled else { return }
       do {
@@ -111,6 +111,14 @@ final class PierLog: @unchecked Sendable {
   /// included (`2026-10-25T13:38:41-07:00`).
   private static let isoStyle = Date.ISO8601FormatStyle(
     timeZoneSeparator: .colon, timeZone: .current)
+
+  /// One entry, one line: names in a message come from other processes, and a
+  /// line break inside one would start a forged entry of the attacker's
+  /// choosing. Backstop to `LsofParser.unescape` doing the same at the source.
+  static func singleLine(_ message: String) -> String {
+    // Character-level: "\r\n" is one Character, so it becomes one space.
+    message.split(whereSeparator: \.isNewline).joined(separator: " ")
+  }
 
   /// Backstop against a secret reaching the file if a caller ever logs
   /// something argv-shaped. Masks `--flag=value` / `KEY=value` where the key

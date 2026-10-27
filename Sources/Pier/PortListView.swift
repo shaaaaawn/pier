@@ -107,7 +107,7 @@ struct PortListView: View {
             "pid \(entry.pid) ignored SIGTERM. SIGKILL cannot be caught — but if a "
               + "parent supervises it, it may respawn."),
           primaryButton: .destructive(Text("Force Kill (SIGKILL)")) {
-            monitor.terminate(entry.pid, force: true)
+            monitor.terminate(entry.pid, force: true, expectedStart: entry.startTime)
           },
           secondaryButton: .cancel()
         )

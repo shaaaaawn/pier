@@ -27,7 +27,8 @@ final class PortMonitor: ObservableObject {
   @Published private(set) var isRefreshing = false
 
   /// Fast polling while the menu bar window is open, slow in the background.
-  var windowVisible = false {
+  /// Published so views that do work while open (the log drawer) can stop.
+  @Published var windowVisible = false {
     didSet {
       guard oldValue != windowVisible else { return }
       scheduleTimer()
@@ -169,7 +170,15 @@ final class PortMonitor: ObservableObject {
           sockets: socketsOut, processTable: psOut, commandLines: fullPS, cmux: cmux,
           terminalInfo: { TerminalSessions.read(pid: $0) },
           projectInfo: { DevServers.readProject($0) }))
-      let entries = assembled.entries
+      // Stamp each row with its process's start time (libproc, ~1 µs per pid)
+      // so a kill from a stale row can tell a recycled pid apart.
+      var starts: [Int32: UInt64] = [:]
+      let entries = assembled.entries.map { entry -> PortEntry in
+        var entry = entry
+        if starts[entry.pid] == nil { starts[entry.pid] = Self.startTime(of: entry.pid) }
+        entry.startTime = starts[entry.pid]
+        return entry
+      }
       let table = assembled.table
 
       let activitySnapshot = Self.collectActivity(

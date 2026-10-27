@@ -165,7 +165,8 @@ extension PortListView {
         LogPanelView(
           source: LogSource.resolve(activity: entry),
           toolPath: monitor.toolPath(for: LogSource.resolve(activity: entry)),
-          fixtureLines: monitor.isFixture ? FixtureData.logLines : nil)
+          fixtureLines: monitor.isFixture ? FixtureData.logLines : nil,
+          active: monitor.windowVisible || monitor.isFixture)
       }
     }
   }

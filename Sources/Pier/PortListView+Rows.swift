@@ -102,7 +102,8 @@ extension PortListView {
           source: LogSource.resolve(port: entry),
           toolPath: monitor.toolPath(for: LogSource.resolve(port: entry)),
           cmuxPassword: CmuxAccess.socketPassword(),
-          fixtureLines: monitor.isFixture ? FixtureData.logLines : nil)
+          fixtureLines: monitor.isFixture ? FixtureData.logLines : nil,
+          active: monitor.windowVisible || monitor.isFixture)
       default:
         PortPreviewView(
           entry: entry, fixtureState: monitor.isFixture ? .loaded : nil,
@@ -424,7 +425,9 @@ extension PortListView {
   func loadTooltip(_ entry: PortEntry) {
     guard tooltips[entry.id] == nil else { return }
     monitor.commandLine(for: entry.pid) { command in
-      tooltips[entry.id] = command
+      // Same masking as the log: hovering a row on a screen share shouldn't
+      // show the `--api-key=…` its command line was started with.
+      tooltips[entry.id] = PierLog.redact(command)
     }
   }
 
@@ -445,9 +448,9 @@ extension PortListView {
   }
 
   func kill(_ entry: PortEntry) {
-    monitor.terminate(entry.pid)
+    monitor.terminate(entry.pid, expectedStart: entry.startTime)
     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-      if monitor.isAlive(entry.pid) {
+      if monitor.isAlive(entry.pid, expectedStart: entry.startTime) {
         pending = .forceKill(entry)
       }
     }
