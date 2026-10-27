@@ -258,7 +258,9 @@ enum DevServers {
         depth += 1
       }
       for (path, parent) in zip(group, parents) {
-        suffix[path] = parent.suffix(depth).joined(separator: "/")
+        // A project directly under "/" has no parent folder to show.
+        let tail = parent.suffix(depth).joined(separator: "/")
+        suffix[path] = tail.isEmpty ? "/" : tail
       }
     }
     return servers.map { server in

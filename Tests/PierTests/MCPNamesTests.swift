@@ -59,6 +59,7 @@ final class MCPNamesTests: XCTestCase {
   /// A generic leftover names the host app instead of "Process".
   func testGenericNamesFallBackToTheHost() {
     XCTAssertEqual(name("Cursor Helper: mcp-process"), "Cursor MCP")
+    XCTAssertEqual(name("/usr/local/bin/npm exec mcp-server"), "npm MCP")
   }
 
   /// One row per server, counted in servers: launcher → server → helper is

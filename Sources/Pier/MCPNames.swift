@@ -129,8 +129,9 @@ enum MCPNames {
     }
     if generic.contains(core) {
       // "Cursor Helper: mcp-process" — the host app is the useful word.
-      let app = command.split(separator: " ").first.map(String.init) ?? base
-      return "\(app) MCP"
+      // Last path component only: "/usr/local/bin/npm" reads as "npm".
+      let first = command.split(separator: " ").first.map(String.init) ?? base
+      return "\(URL(fileURLWithPath: first).lastPathComponent) MCP"
     }
     return
       core
