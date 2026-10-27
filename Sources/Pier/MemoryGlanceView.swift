@@ -128,3 +128,78 @@ extension MemoryFormat {
     return lines.joined(separator: "\n")
   }
 }
+
+/// The footer's heat glance: a thermometer in macOS's thermal colour plus
+/// whole-machine CPU — "CPU 34%", and "· Hot" once macOS starts throttling.
+/// The tooltip names who's doing it.
+///
+/// Observes `MemoryMonitor` like the other glances, so a 2 s tick redraws this
+/// view alone. `busiest` comes from the panel's own refresh and changes only
+/// when the top three do.
+struct CPUGlanceView: View {
+  @ObservedObject var monitor: MemoryMonitor
+  let busiest: [BusyProcess]
+
+  var body: some View {
+    if let cpu = monitor.cpu {
+      let thermal = monitor.thermal
+      ViewThatFits(in: .horizontal) {
+        label(cpu: cpu, thermal: thermal, showState: thermal.isHot)
+        label(cpu: cpu, thermal: thermal, showState: false)
+        // Narrowest: the thermometer alone. Strain lengthens the memory text,
+        // so this is exactly when the room runs out — and when the colour
+        // matters most.
+        Image(systemName: Self.symbol(thermal))
+          .font(.system(size: 10))
+          .foregroundStyle(Self.tint(thermal))
+        Color.clear.frame(width: 0, height: 0)
+      }
+      .help(MemoryFormat.heatTooltip(cpu: cpu, thermal: thermal, busiest: busiest))
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(MemoryFormat.heatTooltip(cpu: cpu, thermal: thermal, busiest: busiest))
+    }
+  }
+
+  private func label(cpu: Double, thermal: ThermalLevel, showState: Bool) -> some View {
+    HStack(spacing: 3) {
+      Image(systemName: Self.symbol(thermal))
+        .foregroundStyle(Self.tint(thermal))
+      Text("CPU \(CPULoad.format(cpu))")
+        .monospacedDigit()
+      if showState {
+        Text("· \(thermal.label)")
+          .foregroundStyle(Self.tint(thermal))
+      }
+    }
+    .font(.system(size: 10))
+    .foregroundStyle(.secondary)
+    .fixedSize()
+  }
+
+  static func symbol(_ thermal: ThermalLevel) -> String {
+    switch thermal {
+    case .nominal: return "thermometer.low"
+    case .fair: return "thermometer.medium"
+    case .serious, .critical: return "thermometer.high"
+    }
+  }
+
+  /// Secondary until macOS says it's hot; then the same adaptive orange / red
+  /// as the menu bar dot.
+  static func tint(_ thermal: ThermalLevel) -> Color {
+    thermal.asStrain.statusTint.map { Color(nsColor: $0) } ?? .secondary
+  }
+}
+
+extension MemoryFormat {
+  static func heatTooltip(cpu: Double, thermal: ThermalLevel, busiest: [BusyProcess]) -> String {
+    var lines = [
+      "Thermal state: \(thermal.label) — \(thermal.explanation)",
+      "CPU \(CPULoad.format(cpu)) of all \(ProcessInfo.processInfo.activeProcessorCount) cores",
+    ]
+    if !busiest.isEmpty {
+      lines.append("Busiest (% of one core): " + busiest.map(\.label).joined(separator: ", "))
+    }
+    return lines.joined(separator: "\n")
+  }
+}

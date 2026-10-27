@@ -41,7 +41,7 @@ found:
 |---|---|
 | `--print-groups` | the exact sections/rows the panel would show (attribution end-to-end) |
 | `--print-activity` | live Docker / Apple Containers / Simulators / MCP detection, with usage |
-| `--print-memory` | RAM / swap glance, pressure + menu bar tint, disk free — live, then fixtures |
+| `--print-memory` | RAM / swap glance, pressure + menu bar dot, thermal state, CPU %, busiest processes, disk free — live, then fixtures |
 | `--render-fixture-simulators <dir>` | the Simulators section at 340 and 440 pt, no device needed |
 | `--render-fixture-terminals <dir>` | Ghostty / Terminal tab groups at 340 and 440 pt |
 | `--render-fixture-statusitem <dir>` | the menu bar item in light and dark mode, each pressure level |

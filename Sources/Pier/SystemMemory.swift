@@ -54,6 +54,11 @@ enum MemoryPressure: Int, Equatable {
     self = MemoryPressure(rawValue: Int(sysctlLevel)) ?? .normal
   }
 
+  /// The more severe of two levels (raw values escalate 1, 2, 4).
+  static func worst(_ a: MemoryPressure, _ b: MemoryPressure) -> MemoryPressure {
+    a.rawValue >= b.rawValue ? a : b
+  }
+
   var label: String {
     switch self {
     case .normal: return "Normal"
@@ -223,6 +228,13 @@ final class MemoryMonitor: ObservableObject {
   /// Startup-volume free space. Disk changes slowly, so it's read on panel open
   /// and then once a minute — not on the 2 s memory tick.
   @Published private(set) var disk: DiskSnapshot?
+  /// macOS's thermal state. Kept current while the panel is closed too, from
+  /// its change notification, because the menu bar dot reports it.
+  @Published private(set) var thermal: ThermalLevel = .nominal
+  /// Whole-machine CPU busy fraction (0…1), sampled on the panel's 2 s tick.
+  /// Published only when the displayed whole percent changes.
+  @Published private(set) var cpu: Double?
+  private var cpuBaseline: CPUTicks?
   static let diskInterval: TimeInterval = 60
   private var lastDiskRead: TimeInterval?
 
@@ -243,6 +255,7 @@ final class MemoryMonitor: ObservableObject {
   init() {
     host = mach_host_self()
     isFixed = false
+    thermal = .current
     // The source only reports *changes*, so read the current level once.
     pressure = Self.readPressure()
     let source = DispatchSource.makeMemoryPressureSource(
@@ -256,15 +269,27 @@ final class MemoryMonitor: ObservableObject {
       MainActor.assumeIsolated { self?.updatePressure(Self.readPressure()) }
     }
     source.activate()
+    // Posted on an arbitrary thread; queue: .main delivers it on main. The
+    // block holds self weakly, so an observer outliving us is inert.
+    NotificationCenter.default.addObserver(
+      forName: ProcessInfo.thermalStateDidChangeNotification, object: nil, queue: .main
+    ) { [weak self] _ in
+      MainActor.assumeIsolated { self?.updateThermal(.current) }
+    }
   }
 
   /// Fixture renders: a fixed value, never sampled, so PNGs stay reproducible.
-  init(fixed: MemorySnapshot, disk: DiskSnapshot? = nil) {
+  init(
+    fixed: MemorySnapshot, disk: DiskSnapshot? = nil, thermal: ThermalLevel = .nominal,
+    cpu: Double? = nil
+  ) {
     host = mach_host_self()
     isFixed = true
     snapshot = fixed
     pressure = fixed.pressure
     self.disk = disk
+    self.thermal = thermal
+    self.cpu = cpu
     pressureSource = nil
   }
 
@@ -286,6 +311,7 @@ final class MemoryMonitor: ObservableObject {
     // A rate measured across the time the panel was closed would average the
     // whole gap into one meaningless number. Start over.
     baseline = nil
+    cpuBaseline = nil
     lastDiskRead = nil
     sample()
     let timer = Timer(timeInterval: Self.interval, repeats: true) { [weak self] timer in
@@ -320,7 +346,20 @@ final class MemoryMonitor: ObservableObject {
       pressureLevel: level, swapoutsPerSecond: rate)
     if snapshot?.displayKey != next.displayKey { snapshot = next }
     updatePressure(next.pressure)
+    sampleCPU()
+    updateThermal(.current)
     readDiskIfDue(now: now)
+  }
+
+  private func sampleCPU() {
+    guard let ticks = CPULoad.read(host: host) else { return }
+    defer { cpuBaseline = ticks }
+    guard let usage = CPULoad.usage(previous: cpuBaseline, current: ticks) else { return }
+    if cpu.map(CPULoad.format) != CPULoad.format(usage) { cpu = usage }
+  }
+
+  func updateThermal(_ level: ThermalLevel) {
+    if thermal != level { thermal = level }
   }
 
   /// Off the main thread: Finder's "available" figure costs ~11.5 ms, and this
