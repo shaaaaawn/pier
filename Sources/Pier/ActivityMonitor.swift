@@ -71,17 +71,25 @@ struct ActivityEntry: Identifiable, Equatable {
   /// containers are listed so they can be started again — they're invisible to
   /// `docker ps` without `-a`, which is why an idle machine looked empty.
   var isRunning = true
+  /// MCP rows: what the server was launched as ("chrome-devtools-mcp@latest"),
+  /// shown on the subline instead of the raw command line.
+  var subtitle: String?
+  /// MCP rows: how many servers the row stands for. A row holds a launcher
+  /// (`npm exec …`), the server and its helpers; counting processes made one
+  /// server read as "×3".
+  var instances: Int?
   /// Simulators only: the device `simctl` acts on.
   var simulator: SimulatorRef?
 
   var id: String { "\(kind.rawValue):\(name):\(pids.first.map(String.init) ?? "-")" }
-  var count: Int { max(pids.count, 1) }
+  var count: Int { instances ?? max(pids.count, 1) }
 
   func matches(_ query: String) -> Bool {
     if query.isEmpty { return true }
     let q = query.lowercased()
     return name.lowercased().contains(q)
       || detail.lowercased().contains(q)
+      || (subtitle?.lowercased().contains(q) ?? false)
       || kind.sectionTitle.lowercased().contains(q)
       || attribution.badgeLabel.lowercased().contains(q)
       || ports.contains { String($0).contains(q) }
@@ -214,27 +222,39 @@ enum ActivityParser {
         label: mcpLabel(command: command, mcpish: mcpish))
     }
 
+    // Grouped by what the server *is* (see `MCPNames`), so a launcher, the
+    // server it starts and that server's helpers become one row.
     var order: [String] = []
     var grouped: [String: ActivityEntry] = [:]
     for raw in raws {
+      let identity = MCPNames.identity(command: raw.command)
+      let name = identity?.name ?? raw.label
       let attribution = Attributor.attribute(
         pid: raw.pid, processName: raw.label, user: raw.user, table: table, cmux: cmux)
-      let key = "\(raw.label)|\(attribution.badgeLabel)"
+      let key = "\(name)|\(attribution.badgeLabel)"
       if var entry = grouped[key] {
         entry.pids.append(raw.pid)
         grouped[key] = entry
       } else {
         order.append(key)
-        // The command line is shown on the row and in its tooltip: masked
-        // like the log, since MCP servers are often started with an API key.
+        // The command line is the row's tooltip: masked like the log, since
+        // MCP servers are often started with an API key.
         grouped[key] = ActivityEntry(
-          kind: .mcp, name: raw.label, detail: PierLog.redact(raw.command),
-          pids: [raw.pid], attribution: attribution)
+          kind: .mcp, name: name, detail: PierLog.redact(raw.command),
+          pids: [raw.pid], attribution: attribution, subtitle: identity?.package)
       }
     }
     return order.compactMap { grouped[$0] }.map { entry in
       var entry = entry
       entry.usage = table.usage(for: entry.pids)
+      // Instances = processes whose parent isn't in the row: each launcher
+      // (or a server started directly) is one server; its children aren't.
+      let members = Set(entry.pids)
+      let roots = entry.pids.filter { pid in
+        guard let parent = table.byPid[pid]?.ppid else { return true }
+        return !members.contains(parent)
+      }
+      entry.instances = max(roots.count, 1)
       return entry
     }
   }

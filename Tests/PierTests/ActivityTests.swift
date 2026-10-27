@@ -78,11 +78,12 @@ final class ActivityTests: XCTestCase {
     let entries = ActivityParser.mcpEntries(fullPS: ps, table: t, cmux: nil)
     XCTAssertEqual(entries.count, 3)
 
-    XCTAssertEqual(entries[0].name, "node · chrome-devtools-mcp")
+    // Named for the server, not the runtime (see MCPNamesTests).
+    XCTAssertEqual(entries[0].name, "Chrome DevTools")
     XCTAssertEqual(entries[0].pids, [101, 102])
     XCTAssertEqual(entries[0].attribution, .harness("Claude Code"))
 
-    XCTAssertEqual(entries[1].name, "npm · server-github")
+    XCTAssertEqual(entries[1].name, "GitHub")
     XCTAssertEqual(entries[1].attribution, .none)
 
     XCTAssertEqual(entries[2].attribution, .system)  // root-owned

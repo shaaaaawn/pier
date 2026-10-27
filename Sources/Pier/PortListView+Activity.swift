@@ -173,7 +173,9 @@ extension PortListView {
 
   func activitySubline(_ entry: ActivityEntry) -> some View {
     HStack(spacing: 5) {
-      Text(entry.detail)
+      // MCP rows show what the server was launched as; the full (masked)
+      // command line stays in the row's tooltip.
+      Text(entry.subtitle ?? entry.detail)
         .lineLimit(1)
         .truncationMode(.middle)
       if !entry.ports.isEmpty {

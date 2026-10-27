@@ -132,6 +132,7 @@ extension PortMonitor {
         let badge = e.attribution == .none ? "" : "  [\(e.attribution.badgeLabel)]"
         let usage = e.usage.map { "  (\($0.memoryLabel), \($0.cpuLabel) CPU)" } ?? ""
         print("  • \(e.name)\(count)\(ports)\(badge)\(usage)")
+        if let subtitle = e.subtitle { print("      \(subtitle)") }
         if !e.detail.isEmpty { print("      \(e.detail)") }
       }
     }
