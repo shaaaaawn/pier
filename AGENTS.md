@@ -53,6 +53,7 @@ found:
 | `--print-menubar` / `--watch-menubar` | which displays reserve bar space; observe hide/reveal signals |
 | `--probe-panel-stable` | that the panel stays where it opened |
 | `--probe-resize` / `--probe-resize-perf` | that the window follows a resize; per-tick cost |
+| `--probe-idle-cpu` | what the panel costs while **closed** — both arms, so the number means something (`make idlecpu`) |
 | `--probe-viewport <url>` | the CSS viewport a real preview gets |
 | `--probe-preview <port> <png>` | the real panel, live data, with that port's preview expanded |
 | `--probe-click <port> <dir>` | real clicks through the non-activating panel while it isn't key; renders after each |
@@ -209,6 +210,40 @@ Do not re-learn these. Each has a test locking it in.
     fix it (the click lands on SwiftUI's internal views); `PanelWindow.sendEvent`
     makes the panel key on mouse-down before AppKit looks. `--probe-click`
     reproduces it.
+
+21. **`orderOut` does not stop SwiftUI, and a hidden panel will happily burn a
+    third of a core.** Closing the panel hides the window; it does not quiesce
+    the view graph. Anything still animating in there keeps requesting
+    display-cycle frames, and **every frame relayouts the whole panel** —
+    offscreen, at 60fps, forever. Measured on a live instance eight days up:
+    **38.8% CPU with the panel closed**, ~4.4ms of layout per 16.7ms frame.
+
+    The animating view was `IndeterminateBar`'s `repeatForever`, mounted
+    whenever a preview was `.loading` *or `.idle`*. Which of those the live
+    instance was stuck in was never confirmed — `.idle` is the more likely
+    candidate, since it's the initial state and `onAppear` returns early
+    without calling `load` when the entry has no `previewURL` — but the fix
+    covers every path, so it didn't need pinning down; don't repeat the claim
+    as though it were measured.
+
+    What *was* measured: the animation itself is nearly free, and the relayout
+    it drags along is the whole cost. `sample` showed only ~6 samples in
+    `RepeatAnimation.animate` against ~1900 in `NSHostingView.layout()`, which
+    reads as "the animation is irrelevant" and is exactly backwards — **it's
+    the trigger, not the cost.**
+
+    The fix is to **drop the animating view** when the panel hides, not to flag
+    it: a running `repeatForever` survives its value being reassigned. Anything
+    added under the panel that animates, polls, or streams needs the same
+    treatment — the log drawer got it via its `active` parameter — and needs
+    grading with `--probe-idle-cpu` (this branch: median 21.9% mounted → 1.2%
+    through the real close path). The probe has to *force* the preview's state,
+    because a fresh launch has no preview open and would report ~0% whether or
+    not the bug is present. Its second arm deliberately forces *only* the state
+    and closes the panel through `windowVisible`, the way `closePanel()` does —
+    an arm that also forced visibility would prove dropping the view is cheap
+    while leaving the real question (does closing the panel drop it?) untested.
+    Trap #10 again: **verify the trigger, not just the machinery.**
 
 ## Sorting
 

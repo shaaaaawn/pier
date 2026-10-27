@@ -24,9 +24,9 @@ final class PreviewController: NSObject, ObservableObject, WKNavigationDelegate 
   }()
   private var lastURL: URL?
   private var timeoutItem: DispatchWorkItem?
-  /// The host Pier asked for. Navigation away from it is refused — see
-  /// `PreviewNavigationPolicy`.
-  private var expectedHost: String?
+  /// The URL Pier asked for. Navigation away from it — another host, or on
+  /// loopback another port — is refused; see `PreviewNavigationPolicy`.
+  private var expected: URL?
 
   override init() {
     super.init()
@@ -35,7 +35,7 @@ final class PreviewController: NSObject, ObservableObject, WKNavigationDelegate 
 
   func load(_ url: URL) {
     lastURL = url
-    expectedHost = url.host
+    expected = url
     state = .loading
     scheduleTimeout()
     webView.load(URLRequest(url: url))
@@ -94,7 +94,7 @@ final class PreviewController: NSObject, ObservableObject, WKNavigationDelegate 
       decisionHandler(.cancel)
       return
     }
-    guard PreviewNavigationPolicy.allows(url, expectedHost: expectedHost) else {
+    guard PreviewNavigationPolicy.allows(url, expected: expected) else {
       PierLog.shared.log("preview blocked navigation to \(url.host ?? url.scheme ?? "?")")
       // If the *first* load is what got redirected away, the user would be left
       // watching a spinner forever, so say what happened.
@@ -133,6 +133,23 @@ struct WebViewRepresentable: NSViewRepresentable {
   }
 
   func updateNSView(_ nsView: WKWebView, context: Context) {}
+}
+
+/// Debug hook for `--probe-idle-cpu`, which has to reproduce a state the
+/// fixture PNGs deliberately never reach: a preview stuck mid-load inside a
+/// panel that has been closed. Fixture renders pin the preview to `.loaded`
+/// (a live WKWebView would make them non-deterministic), so there is otherwise
+/// no way to get an animating bar into an offscreen window. nil in normal runs.
+///
+/// The two are independent on purpose. Forcing the state is unavoidable —
+/// fixtures pin `.loaded` and there is no other way to get an animating bar
+/// into an offscreen window. Forcing visibility is *optional*, so the probe
+/// can leave it nil and drive `PortMonitor.windowVisible` instead — which is
+/// the branch the real panel uses, and therefore the one worth grading.
+/// (Not `PreviewProbe`: that name belongs to `--probe-preview`.)
+enum PreviewIdleState {
+  nonisolated(unsafe) static var forcedState: PreviewController.LoadState?
+  nonisolated(unsafe) static var forcedPanelVisible: Bool?
 }
 
 /// Quiet 2pt Safari-style indeterminate progress bar for the card top.
@@ -188,6 +205,19 @@ struct PortPreviewView: View {
   var fixtureState: PreviewController.LoadState? = nil
   /// Card width in points, used for the pageZoom → viewport math.
   var cardWidth: CGFloat = PortListView.panelWidth - 24
+  /// False while the panel is hidden, which **removes** the loading bar rather
+  /// than merely hiding it.
+  ///
+  /// `orderOut` does not quiesce SwiftUI: the view graph stays live, and a
+  /// `repeatForever` animation inside it keeps requesting display-cycle frames
+  /// process-wide. The animation itself is nearly free — the cost is that every
+  /// frame relayouts the whole panel. Measured on a closed panel with one
+  /// expanded preview: 38.8% CPU, ~4.4ms of layout per 16.7ms frame, forever.
+  ///
+  /// Dropping the view is what stops it. Setting a flag inside `IndeterminateBar`
+  /// would not — a running `repeatForever` survives its value being reassigned.
+  /// Defaults to true so fixture renders (which have no panel) still show it.
+  var panelVisible: Bool = true
 
   @StateObject private var controller = PreviewController()
   @State private var urlCopied = false
@@ -299,7 +329,13 @@ struct PortPreviewView: View {
   private var browserCard: some View {
     ZStack(alignment: .top) {
       webContent
-      if state == .loading || state == .idle {
+      // Only while a load is actually in flight, and only while the panel is
+      // on screen. Both halves are load-bearing, and the second one is the
+      // expensive half — see `panelVisible`.
+      //
+      // `.idle` used to show the bar too, which meant a preview whose entry
+      // lost its URL (so `onAppear` never called `load`) sat "loading" forever.
+      if state == .loading, panelVisible {
         IndeterminateBar()
       }
     }

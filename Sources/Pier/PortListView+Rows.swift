@@ -101,13 +101,15 @@ extension PortListView {
         LogPanelView(
           source: LogSource.resolve(port: entry),
           toolPath: monitor.toolPath(for: LogSource.resolve(port: entry)),
-          cmuxPassword: CmuxAccess.socketPassword(),
+          cmuxPassword: monitor.cmuxPassword,
           fixtureLines: monitor.isFixture ? FixtureData.logLines : nil,
           active: monitor.windowVisible || monitor.isFixture)
       default:
         PortPreviewView(
-          entry: entry, fixtureState: monitor.isFixture ? .loaded : nil,
-          cardWidth: previewCardWidth)
+          entry: entry,
+          fixtureState: monitor.isFixture ? (PreviewIdleState.forcedState ?? .loaded) : nil,
+          cardWidth: previewCardWidth,
+          panelVisible: PreviewIdleState.forcedPanelVisible ?? monitor.windowVisible)
       }
     }
   }

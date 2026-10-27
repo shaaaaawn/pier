@@ -56,6 +56,10 @@ activity: ## print the live Docker/Containers/MCP snapshot
 	swift build
 	.build/debug/Pier --print-activity
 
+idlecpu: ## measure what the panel costs while CLOSED (both arms)
+	swift build
+	.build/debug/Pier --probe-idle-cpu 10
+
 viewport: ## check the CSS viewport a preview gets: make viewport URL=http://…
 	@if [ -z "$(URL)" ]; then echo "usage: make viewport URL=http://127.0.0.1:3000"; exit 1; fi
 	swift build

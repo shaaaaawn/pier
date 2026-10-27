@@ -33,6 +33,97 @@ enum FixtureRenderer {
     render(to: path, entries: entries, scope: "all", expanded: target?.id)
   }
 
+  /// `--probe-idle-cpu [seconds]`: what the panel costs while it is **closed**.
+  ///
+  /// `orderOut` does not quiesce SwiftUI. The view graph stays live, so a
+  /// `repeatForever` animation left inside it keeps requesting display-cycle
+  /// frames, and each frame relayouts the entire panel — with nobody watching.
+  /// The animation itself is nearly free; the relayout it drags along is not.
+  ///
+  /// Both arms run, because a single number proves nothing here: the first is
+  /// the old behavior (loading bar still mounted while hidden), the second is
+  /// the fix. A fresh launch has no preview open, so measuring the app as it
+  /// starts would report ~0% either way and grade nothing — AGENTS.md trap #10
+  /// again, and it is why the probe has to force the state.
+  @MainActor
+  static func probeIdleCPU(seconds: Int = 8) -> Never {
+    _ = NSApplication.shared
+    NSApp.setActivationPolicy(.accessory)
+
+    print("panel CLOSED, one preview expanded and stuck mid-load")
+    print("per-second CPU% of this process — \(seconds) samples after a 1s warmup\n")
+    // Arm 1 pins the bar mounted, reproducing the old behavior. Arm 2 forces
+    // nothing: it flips `PortMonitor.windowVisible` exactly as closePanel()
+    // does, so it grades the plumbing the real panel uses rather than the
+    // probe's own override. An arm that only proved "dropping the view is
+    // cheap" would leave the interesting question — does closing the panel
+    // actually drop it? — untested.
+    let mounted = measureIdle(seconds: seconds, forcedPanelVisible: true)
+    let real = measureIdle(seconds: seconds, forcedPanelVisible: nil)
+    print("  bar left mounted while hidden (old behavior)  \(mounted)")
+    print("  panel closed via windowVisible (real path)    \(real)")
+    exit(0)
+  }
+
+  /// One arm of `--probe-idle-cpu`. A distribution, not a mean: three runs of
+  /// the same build can differ enough that an average hides the answer.
+  ///
+  /// `forcedPanelVisible: nil` is the arm that matters — visibility then comes
+  /// from `monitor.windowVisible`, which is what `MenuBarController` drives.
+  @MainActor
+  private static func measureIdle(seconds: Int, forcedPanelVisible: Bool?) -> String {
+    PreviewIdleState.forcedState = .loading
+    PreviewIdleState.forcedPanelVisible = forcedPanelVisible
+    let entries = Array(FixtureData.entries.prefix(6))
+    var perPid: [Int32: Int] = [:]
+    for entry in entries { perPid[entry.pid, default: 0] += 1 }
+    let target = entries.first { $0.previewURL != nil && perPid[$0.pid] == 1 }
+
+    let monitor = PortMonitor(
+      fixture: entries, activity: FixtureData.activity, history: FixtureData.history)
+    let hosting = NSHostingView(
+      rootView: PortListView(initialExpandedID: target?.id, initialMode: .preview)
+        .environmentObject(monitor))
+    let size = NSSize(width: PortListView.panelWidth, height: PortListView.panelHeight)
+    let window = NSWindow(
+      contentRect: NSRect(origin: .zero, size: size),
+      styleMask: [.borderless], backing: .buffered, defer: false)
+    window.contentView = hosting
+    // Offscreen, so ordering it front never flashes on the user's display —
+    // but it still goes through a real front → out cycle. A window that was
+    // never shown is not the same thing as one that was closed.
+    window.setFrameOrigin(NSPoint(x: -10_000, y: -10_000))
+    monitor.windowVisible = true
+    window.orderFront(nil)
+    RunLoop.current.run(until: Date().addingTimeInterval(1))
+    // The same order MenuBarController.closePanel() uses.
+    window.orderOut(nil)
+    monitor.windowVisible = false
+
+    var samples: [Double] = []
+    for _ in 0..<seconds {
+      let before = processCPUSeconds()
+      RunLoop.current.run(until: Date().addingTimeInterval(1))
+      samples.append((processCPUSeconds() - before) * 100)
+    }
+    window.contentView = nil
+    PreviewIdleState.forcedState = nil
+    PreviewIdleState.forcedPanelVisible = nil
+
+    let sorted = samples.sorted()
+    let pct = { (p: Double) in sorted[min(sorted.count - 1, Int(p * Double(sorted.count)))] }
+    return String(
+      format: "min %.1f%%  median %.1f%%  p90 %.1f%%", sorted.first ?? 0, pct(0.5), pct(0.9))
+  }
+
+  /// User + system CPU this process has consumed, in seconds.
+  private static func processCPUSeconds() -> Double {
+    var usage = rusage()
+    getrusage(RUSAGE_SELF, &usage)
+    let secs = { (t: timeval) in Double(t.tv_sec) + Double(t.tv_usec) / 1_000_000 }
+    return secs(usage.ru_utime) + secs(usage.ru_stime)
+  }
+
   /// `--render-fixture-idle <out.png>`: engines installed but with **no
   /// containers** — the state where the sections used to vanish, taking their
   /// start/stop/prune menus with them.
