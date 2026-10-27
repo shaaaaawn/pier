@@ -21,6 +21,12 @@ enum MemoryProbe {
     print("page size: \(KernelPage.size) bytes (vm_stat reports the same unit)")
     print(
       "menu bar count colour: \(monitor.pressure.tintName) (\(monitor.pressure.label) pressure)")
+    print("thermal: \(monitor.thermal.label) — \(monitor.thermal.explanation)")
+    if let cpu = monitor.cpu { print("cpu:     \(CPULoad.format(cpu)) of all cores") }
+    let table = ProcessTable.parse(
+      ProcessRunner.run("/bin/ps", ["-axo", "pid=,ppid=,%cpu=,rss=,ucomm="], timeout: 5)?.stdout
+        ?? "")
+    print("busiest: \(table.busiest().map(\.label).joined(separator: ", "))")
     if let disk = DiskSpace.read() {
       print("disk:    \(DiskSpace.format(disk.free)) free")
       print(
@@ -32,6 +38,12 @@ enum MemoryProbe {
   /// Three states worth grading: a healthy busy Mac (this dev machine's real
   /// shape — heavy compression, no swap), pressure building, and critical with
   /// pages actively going out.
+  /// Heat to pair with each memory state, so the footer is graded with the
+  /// CPU glance in every state it can show: cool, Hot (throttling), Very hot.
+  static let heat: [String: (thermal: ThermalLevel, cpu: Double)] = [
+    "normal": (.nominal, 0.22), "warning": (.serious, 0.78), "critical": (.critical, 0.96),
+  ]
+
   static let fixtures: [(name: String, snapshot: MemorySnapshot)] = {
     func gb(_ x: Double) -> UInt64 { UInt64(x * MemoryFormat.gigabyte) }
     return [
@@ -78,7 +90,11 @@ enum MemoryProbe {
           history: FixtureData.history)
         let view = PortListView()
           .environmentObject(monitor)
-          .environment(\.memoryMonitor, MemoryMonitor(fixed: snapshot, disk: fixtureDisk))
+          .environment(
+            \.memoryMonitor,
+            MemoryMonitor(
+              fixed: snapshot, disk: fixtureDisk, thermal: heat[name]?.thermal ?? .nominal,
+              cpu: heat[name]?.cpu))
         let path = "\(dir)/memory-\(name)-\(Int(width)).png"
         guard write(view, size: NSSize(width: width, height: PortListView.panelHeight), to: path)
         else {

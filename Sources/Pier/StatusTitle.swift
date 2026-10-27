@@ -5,7 +5,8 @@ import AppKit
 /// anything actionable, and it widened an item in a bar that's often full.
 ///
 /// Two marks remain, each only while it means something:
-/// - `●` in orange or red while the kernel reports memory pressure;
+/// - `●` in orange or red while the Mac is under strain: memory pressure, or
+///   a thermal state of Hot / Very hot (macOS slowing the CPU to cool down);
 /// - `•` in the menu bar's own colour while there are unseen start/stop events.
 ///
 /// Never `contentTintColor`. Tinting the whole button recolours the template
@@ -17,9 +18,13 @@ import AppKit
 enum StatusTitle {
   static var font: NSFont { .systemFont(ofSize: 12) }
 
-  static func make(unseen: Int, pressure: MemoryPressure) -> NSAttributedString {
+  static func make(
+    unseen: Int, pressure: MemoryPressure, thermal: ThermalLevel = .nominal
+  ) -> NSAttributedString {
     let title = NSMutableAttributedString()
-    if let colour = pressure.statusTint {
+    // One dot for "under strain", in the colour of whichever is worse.
+    let strain = MemoryPressure.worst(pressure, thermal.asStrain)
+    if let colour = strain.statusTint {
       title.append(
         NSAttributedString(
           string: " ●",
