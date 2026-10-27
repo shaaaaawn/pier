@@ -86,6 +86,7 @@ Use the matching probe whenever a change touches a live integration:
 | `--probe-panel-stable` | Confirm the open panel does not move itself | Opens the panel |
 | `--probe-resize` | Exercise real panel resizing | Opens and resizes the panel |
 | `--probe-resize-perf` | Resize timing distribution | Persists panel size |
+| `make idlecpu` | CPU cost of the **closed** panel, both arms | Offscreen window |
 | `make viewport URL=…` | Real web preview CSS viewport | Connects to the supplied URL |
 | `make logs C=…` | Live Docker log streaming | Reads a running container |
 | `make selfevent` | Verify Pier actions are attributed to `you` | Spawns and kills a listener |

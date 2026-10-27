@@ -121,6 +121,10 @@ enum DebugFlags {
     {
       MainActor.assumeIsolated { PreviewProbe.run(port: port, out: args[index + 2]) }
     }
+    if let index = args.firstIndex(of: "--probe-idle-cpu") {
+      let seconds = args.count > index + 1 ? Int(args[index + 1]) ?? 8 : 8
+      MainActor.assumeIsolated { FixtureRenderer.probeIdleCPU(seconds: seconds) }
+    }
     if let index = args.firstIndex(of: "--probe-viewport"), args.count > index + 1 {
       MainActor.assumeIsolated {
         FixtureRenderer.probeViewport(
