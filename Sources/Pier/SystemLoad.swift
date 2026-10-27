@@ -3,13 +3,14 @@ import Foundation
 
 // "Is my Mac hot, and who's doing it?"
 //
-// Temperature in °C and fan RPM are only reachable on Apple silicon through
-// private SMC / IOHID interfaces that change between macOS releases. The
-// supported signal is `ProcessInfo.thermalState`: the same state macOS acts on
-// when it throttles the CPU, published with a change notification, readable
-// without any permission. That is what "hot" means here. CPU load (host tick
-// counters, ~µs) and the busiest processes (from the `ps` table Pier already
-// reads) answer the second half.
+// "Hot" — the menu bar dot, the colour — is `ProcessInfo.thermalState`: the
+// state macOS itself throttles on, published with a change notification,
+// readable without any permission. Temperatures in °C and fan speeds are a
+// separate, descriptive reading (`SMC.swift`): public IOKit calls, but
+// undocumented sensor keys that vary by chip, so they inform the footer and
+// never decide whether the Mac counts as hot. CPU load (host tick counters,
+// ~µs) and the busiest processes (from the `ps` table Pier already reads)
+// answer "who's doing it".
 
 /// macOS's thermal state, in the order it escalates.
 enum ThermalLevel: Int, Comparable, Sendable {

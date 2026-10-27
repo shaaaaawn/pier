@@ -347,7 +347,8 @@ final class MenuBarController: NSObject {
     panel.orderOut(nil)
     statusItem.button?.highlight(false)
     monitor.windowVisible = false
-    // Nothing samples memory while the panel is closed.
+    // Memory stops sampling while the panel is closed; only MemoryMonitor's
+    // once-a-minute CPU + temperature tick keeps the 30-minute ranges honest.
     memory.setActive(false)
   }
 

@@ -41,7 +41,7 @@ found:
 |---|---|
 | `--print-groups` | the exact sections/rows the panel would show (attribution end-to-end), then the Dev scope: each dev server's framework, by project |
 | `--print-activity` | live Docker / Apple Containers / Simulators / MCP detection, with usage |
-| `--print-memory` | RAM / swap glance, pressure + menu bar dot, thermal state, CPU %, busiest processes, disk free — live, then fixtures |
+| `--print-memory` | RAM / swap glance, pressure, thermal state, **SMC temperatures** (CPU average / hottest, GPU, fans) with discovery and per-reading cost, CPU %, busiest processes, disk free |
 | `--render-fixture-simulators <dir>` | the Simulators section at 340 and 440 pt, no device needed |
 | `--render-fixture-terminals <dir>` | Ghostty / Terminal tab groups at 340 and 440 pt |
 | `--render-fixture-dev <dir>` | dev servers among their noise, All and Dev scopes, 340 and 440 pt |

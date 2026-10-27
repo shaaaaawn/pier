@@ -126,6 +126,27 @@ Available log behavior depends on the source:
 Log drawers keep a bounded in-memory line history and are never persisted by
 Pier.
 
+## System glance
+
+The footer shows, left to right:
+
+- **Memory** — used / total RAM and swap, in the memory-pressure colour.
+- **Heat** — a thermometer in macOS's thermal-state colour, the CPU temperature,
+  and whole-machine CPU load. Each value sits on a small line: a fixed scale
+  (temperature 30–105 °C; CPU 0–100%, where 100% means every core is busy), a
+  band for its low–high over the last 30 minutes, and a dot for now. The
+  tooltip adds the hottest core, the GPU, fan speeds, and the three busiest
+  processes (in Activity Monitor's "% of one core", so up to 100% × cores).
+- **Disk** — free space on the startup volume.
+
+Temperatures come from the Mac's System Management Controller and are
+descriptive only — "hot" (the colour, the menu bar dot) is macOS's own thermal
+state. On a Mac whose sensors Pier doesn't recognise, the temperature is
+omitted and CPU is shown alone. Verified on an M1 Max.
+
+The footer narrows gracefully: lines, then numbers, then the temperature alone,
+then the coloured thermometer.
+
 ## Start and stop events
 
 Pier diffs consecutive refreshes to record:
