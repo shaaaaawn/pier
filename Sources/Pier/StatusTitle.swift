@@ -1,25 +1,33 @@
 import AppKit
 
-/// The menu bar item's text: the TCP port count, a bullet for unseen events,
-/// and — only under memory pressure — the count in orange or red.
+/// The menu bar item's text beside the glyph — usually **nothing**. A port
+/// count used to sit here; it changed every few seconds without telling you
+/// anything actionable, and it widened an item in a bar that's often full.
+///
+/// Two marks remain, each only while it means something:
+/// - `●` in orange or red while the kernel reports memory pressure;
+/// - `•` in the menu bar's own colour while there are unseen start/stop events.
 ///
 /// Never `contentTintColor`. Tinting the whole button recolours the template
 /// glyph too, and on macOS 26 a tinted item hosted by Control Center rendered
 /// with no visible glyph at all (an on-screen slot that drew nothing, in dark
 /// mode). The glyph stays a plain template image, which the system draws black
-/// or white to match the menu bar; only the digits carry the colour.
-///
-/// Colours are the dynamic system ones, resolved against the menu bar's own
-/// appearance at draw time: orange rather than yellow for Warning, because
-/// yellow text disappears on a light menu bar.
+/// or white to match the menu bar; only the pressure dot carries colour, and
+/// its colours resolve per appearance (see `MemoryPressure.statusTint`).
 enum StatusTitle {
-  static var font: NSFont { .monospacedDigitSystemFont(ofSize: 12, weight: .regular) }
+  static var font: NSFont { .systemFont(ofSize: 12) }
 
-  static func make(count: Int, unseen: Int, pressure: MemoryPressure) -> NSAttributedString {
-    let title = NSMutableAttributedString(string: " \(count)", attributes: [.font: font])
+  static func make(unseen: Int, pressure: MemoryPressure) -> NSAttributedString {
+    let title = NSMutableAttributedString()
     if let colour = pressure.statusTint {
-      title.addAttribute(
-        .foregroundColor, value: colour, range: NSRange(location: 0, length: title.length))
+      title.append(
+        NSAttributedString(
+          string: " ●",
+          attributes: [
+            // Smaller than the text and lifted to sit mid-glyph: a 12pt ●
+            // outweighed the icon it annotates.
+            .font: NSFont.systemFont(ofSize: 8), .baselineOffset: 2, .foregroundColor: colour,
+          ]))
     }
     if unseen > 0 {
       // No colour: inherits the menu bar's, like the glyph.

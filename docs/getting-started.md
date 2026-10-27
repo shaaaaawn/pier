@@ -40,8 +40,11 @@ This rebuilds Pier, stops an existing Pier process, and opens the new app bundle
 
 ## First launch
 
-Look for the pier glyph and a listening-port count in the menu bar. Select it to
-open the panel.
+Look for the pier glyph in the menu bar and select it to open the panel. Hover
+it for the listening-port count. A plain `•` beside it means there are start or
+stop events you haven't seen; an orange or red `●` means macOS reports memory
+pressure. If the icon is hidden by a crowded menu bar, open Pier again from
+Spotlight or Finder and the panel appears anyway.
 
 From the panel you can:
 

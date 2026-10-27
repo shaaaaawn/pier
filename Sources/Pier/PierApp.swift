@@ -233,21 +233,17 @@ final class MenuBarController: NSObject {
     }
   }
 
-  /// A bullet after the port count marks unseen start/stop events. Deliberately
-  /// monochrome: the icon is a template image that inverts with the menu bar,
-  /// and a colored dot beside it would be the one thing that doesn't.
-  ///
-  /// The single exception is memory pressure: at Warning or Critical the count
-  /// turns orange or red (see `StatusTitle` for why only the count). That
-  /// colour has to mean something, so it appears only when the kernel says so,
-  /// never for "lots of RAM used" (which is normal on macOS).
+  /// The glyph alone, plus a mark only while one means something (see
+  /// `StatusTitle`). Memory-pressure colour appears only when the kernel says
+  /// so, never for "lots of RAM used" (which is normal on macOS). The port
+  /// count lives in the tooltip now, not the menu bar.
   private func updateTitle(_ count: Int, unseen: Int) {
-    statusItem.button?.attributedTitle = StatusTitle.make(
-      count: count, unseen: unseen, pressure: memoryPressure)
-    var tip =
-      unseen > 0
-      ? "Pier — \(unseen) new event\(unseen == 1 ? "" : "s")"
-      : "Pier — listening ports"
+    let title = StatusTitle.make(unseen: unseen, pressure: memoryPressure)
+    statusItem.button?.attributedTitle = title
+    // Image-only when there's no mark, so the item is just the glyph's width.
+    statusItem.button?.imagePosition = title.length == 0 ? .imageOnly : .imageLeading
+    var tip = "Pier — \(count) listening port\(count == 1 ? "" : "s")"
+    if unseen > 0 { tip += "\n\(unseen) new event\(unseen == 1 ? "" : "s")" }
     if memoryPressure != .normal { tip += "\nMemory pressure: \(memoryPressure.label)" }
     statusItem.button?.toolTip = tip
   }
@@ -541,9 +537,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let repaired = StatusItemRepair.repairDefaults()
     if !repaired.isEmpty {
       PierLog.shared.log("status item defaults repaired: \(repaired.joined(separator: ", "))")
-    }
-    if StatusItemRepair.seedPositionIfUnset() {
-      PierLog.shared.log("status item placed beside the system items (no saved position)")
     }
 
     let controller = MenuBarController()
