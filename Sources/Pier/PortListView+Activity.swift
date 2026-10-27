@@ -299,7 +299,10 @@ extension PortListView {
 
   @ViewBuilder
   func groupHeaderIcon(_ group: PortGroup) -> some View {
-    if group.title.hasPrefix("cmux · ") {
+    if group.isProject {
+      Image(systemName: "folder")
+        .font(.system(size: 9))
+    } else if group.title.hasPrefix("cmux · ") {
       Image(systemName: "rectangle.split.3x1")
         .font(.system(size: 9))
     } else if case .terminal = group.rows.first?.entries.first?.attribution {
