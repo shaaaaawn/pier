@@ -121,14 +121,14 @@ enum LogText {
   /// letting a chatty container grow the panel without bound.
   static let cap = 800
 
-  /// Split a chunk into complete lines plus the leftover partial line — a pipe
-  /// chunk can end mid-line, and joining it to the next read is what keeps a
-  /// long log line from being torn in two.
   /// Longest partial line held while waiting for its newline. A stream that
   /// never sends one (a progress bar, a binary blob) would otherwise grow the
   /// carry without bound; past this it's emitted as a line of its own.
   static let maxCarry = 64 * 1024
 
+  /// Split a chunk into complete lines plus the leftover partial line — a pipe
+  /// chunk can end mid-line, and joining it to the next read is what keeps a
+  /// long log line from being torn in two.
   static func split(_ chunk: String, carry: String) -> (lines: [String], carry: String) {
     let combined = carry + chunk
     guard combined.contains("\n") else {

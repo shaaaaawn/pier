@@ -112,9 +112,6 @@ final class PierLog: @unchecked Sendable {
   private static let isoStyle = Date.ISO8601FormatStyle(
     timeZoneSeparator: .colon, timeZone: .current)
 
-  /// Backstop against a secret reaching the file if a caller ever logs
-  /// something argv-shaped. Masks `--flag=value` / `KEY=value` where the key
-  /// looks credential-ish, and anything after a bare `password`/`token` word.
   /// One entry, one line: names in a message come from other processes, and a
   /// line break inside one would start a forged entry of the attacker's
   /// choosing. Backstop to `LsofParser.unescape` doing the same at the source.
@@ -123,6 +120,9 @@ final class PierLog: @unchecked Sendable {
     message.split(whereSeparator: \.isNewline).joined(separator: " ")
   }
 
+  /// Backstop against a secret reaching the file if a caller ever logs
+  /// something argv-shaped. Masks `--flag=value` / `KEY=value` where the key
+  /// looks credential-ish, and anything after a bare `password`/`token` word.
   static func redact(_ message: String) -> String {
     maskAssignments(in: message)
   }
