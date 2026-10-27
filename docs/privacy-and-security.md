@@ -12,9 +12,15 @@ User-selected previews load a local or LAN URL in a `WKWebView`. The web view
 uses a non-persistent data store, so previewed services do not leave cookies,
 local storage, or caches in Pier.
 
-Top-level preview navigation is restricted to the selected host and loopback
-addresses over HTTP or HTTPS. External redirects and `file:`, `data:`, and
-`javascript:` navigations are blocked.
+Top-level preview navigation is restricted to the selected host over HTTP or
+HTTPS — and, on loopback, to the selected port. Loopback hostnames
+(`localhost`, `127.0.0.1`, `::1`) are interchangeable at the same port, which
+is the rename real dev servers redirect through; a different local port,
+external hosts, and `file:`, `data:`, and `javascript:` navigations are
+blocked. Without the port check, a previewed page could point Pier's web view
+at any other service on the machine — an unauthenticated Docker API on :2375,
+a dev tool with a GET-mutating admin route — making requests the user never
+asked for.
 
 This navigation policy does not intercept every page subresource. A previewed
 page can still request remote scripts, images, fonts, or other assets that it

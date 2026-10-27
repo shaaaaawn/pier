@@ -102,8 +102,11 @@ CSS viewport and scales it to the panel instead of forcing the page into a mobil
 layout.
 
 The preview uses a non-persistent data store. Navigation is limited to the
-selected host and loopback addresses over HTTP or HTTPS; redirects to external
-hosts and `file:`, `data:`, or `javascript:` URLs are blocked.
+selected URL: the selected host over HTTP or HTTPS, and on loopback the selected
+**port** as well — `localhost` names hundreds of unrelated services, and the
+untrusted previewed page doesn't get to pick a different one. Redirects to
+external hosts, other local ports, and `file:`, `data:`, or `javascript:` URLs
+are blocked.
 
 The navigation policy covers page navigation, not every subresource. A previewed
 page can still load remote scripts, images, fonts, or other assets it references.
