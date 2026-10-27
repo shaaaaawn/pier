@@ -1,6 +1,14 @@
 import Combine
 import Foundation
 
+/// One probe's result, handed from its queue to the join point. The dispatch
+/// group's leave/wait pair is the barrier that orders the write before the
+/// read; `@unchecked Sendable` documents exactly that for the Swift 6 capture
+/// check, which cannot see through `group.wait()`.
+final class ProbeResult<T>: @unchecked Sendable {
+  var value: T?
+}
+
 /// Polls lsof/ps/cmux on a background queue and publishes attributed port entries.
 ///
 /// Main-actor: its state is `@Published` to SwiftUI and every mutation already
@@ -33,7 +41,10 @@ final class PortMonitor: ObservableObject {
   /// Published so views that do work while open (the log drawer) can stop.
   @Published var windowVisible = false {
     didSet {
-      guard oldValue != windowVisible else { return }
+      // A fixture monitor promises "no timers, no probes" — `--probe-idle-cpu`
+      // toggles this to reproduce a real open/close, and must not start
+      // polling lsof underneath its own measurement.
+      guard oldValue != windowVisible, !isFixture else { return }
       scheduleTimer()
       if windowVisible {
         refresh()
@@ -48,6 +59,11 @@ final class PortMonitor: ObservableObject {
   private var timer: Timer?
   /// Internal, not private: read by `commandLine(for:)` in +Actions.
   var commandCache: [Int32: String] = [:]
+  /// The cmux socket password as of the last refresh. Cached so the log
+  /// drawer's view doesn't re-read and re-parse `cmux.json` on every body
+  /// evaluation — a file read on the main thread, several times a second
+  /// while the drawer is open.
+  var cmuxPassword: String?
   let cmuxPath: String?
   let dockerPath: String?
   let containerPath: String?
@@ -133,38 +149,73 @@ final class PortMonitor: ObservableObject {
     isRefreshing = true
     let cmuxPath = self.cmuxPath
     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-      // One lsof for both protocols: each call walks every process's file
-      // table, so two calls cost twice as much for the same rows.
-      let socketsOut =
-        ProcessRunner.run(
-          "/usr/sbin/lsof", ["+c", "0", "-nP", "-iTCP", "-sTCP:LISTEN", "-iUDP"], timeout: 10)?
-        .stdout ?? ""
-      // %cpu + rss ride along on the existing chain probe — no extra process.
-      let psOut =
-        ProcessRunner.run(
-          "/bin/ps", ["-axo", "pid=,ppid=,%cpu=,rss=,ucomm="], timeout: 5)?.stdout ?? ""
+      // The four probes are independent, so they run concurrently and the
+      // refresh takes as long as its slowest probe instead of their sum —
+      // lsof alone can take ~500 ms, and the panel-open cadence is 5 s.
+      // Each writes only its own box; the group joins them before any is
+      // read, so the assembly below stays deterministic.
+      let group = DispatchGroup()
+      let socketsBox = ProbeResult<String>()
+      let psBox = ProbeResult<String>()
+      let fullPSBox = ProbeResult<String>()
+      let cmuxBox = ProbeResult<(snapshot: CmuxSnapshot?, status: CmuxStatus)>()
+      // Read once per refresh: it feeds the cmux probe's environment here and
+      // the log drawer's copy below, instead of the view re-reading (and
+      // re-parsing) the config file on every body evaluation.
+      let cmuxPassword = CmuxAccess.socketPassword()
 
+      group.enter()
+      DispatchQueue.global(qos: .userInitiated).async {
+        // One lsof for both protocols: each call walks every process's file
+        // table, so two calls cost twice as much for the same rows.
+        socketsBox.value =
+          ProcessRunner.run(
+            "/usr/sbin/lsof", ["+c", "0", "-nP", "-iTCP", "-sTCP:LISTEN", "-iUDP"], timeout: 10)?
+          .stdout ?? ""
+        group.leave()
+      }
+      group.enter()
+      DispatchQueue.global(qos: .userInitiated).async {
+        // %cpu + rss ride along on the existing chain probe — no extra process.
+        psBox.value =
+          ProcessRunner.run(
+            "/bin/ps", ["-axo", "pid=,ppid=,%cpu=,rss=,ucomm="], timeout: 5)?.stdout ?? ""
+        group.leave()
+      }
+      group.enter()
+      DispatchQueue.global(qos: .userInitiated).async {
+        // Full command lines: shared by MCP detection and by path-based
+        // harness attribution (a `node <path>/cli.js` harness is invisible
+        // to ucomm).
+        fullPSBox.value =
+          ProcessRunner.run(
+            "/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)?.stdout ?? ""
+        group.leave()
+      }
       // cmux is optional: tolerate absence/failure entirely — but record *why*
       // it didn't work, so a blocked socket can be reported instead of looking
       // like cmux isn't installed.
-      var cmux: CmuxSnapshot?
-      var cmuxStatus: CmuxStatus = .notInstalled
       if let cmuxPath {
-        let result = ProcessRunner.run(
-          cmuxPath, CmuxAccess.arguments(), timeout: 3,
-          environment: CmuxAccess.environment(password: CmuxAccess.socketPassword()))
-        cmuxStatus = CmuxAccess.status(from: result) {
-          let snapshot = CmuxSnapshot.parse(result?.stdout ?? "")
-          cmux = snapshot
-          return snapshot.workspaceTitles.count
+        group.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+          var snapshot: CmuxSnapshot?
+          let result = ProcessRunner.run(
+            cmuxPath, CmuxAccess.arguments(), timeout: 3,
+            environment: CmuxAccess.environment(password: cmuxPassword))
+          let status = CmuxAccess.status(from: result) {
+            snapshot = CmuxSnapshot.parse(result?.stdout ?? "")
+            return snapshot?.workspaceTitles.count ?? 0
+          }
+          cmuxBox.value = (snapshot, status)
+          group.leave()
         }
       }
-
-      // Full command lines: shared by MCP detection and by path-based harness
-      // attribution (a `node <path>/cli.js` harness is invisible to ucomm).
-      let fullPS =
-        ProcessRunner.run(
-          "/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)?.stdout ?? ""
+      group.wait()
+      let socketsOut = socketsBox.value ?? ""
+      let psOut = psBox.value ?? ""
+      let fullPS = fullPSBox.value ?? ""
+      let cmux = cmuxBox.value?.snapshot
+      let cmuxStatus = cmuxBox.value?.status ?? .notInstalled
 
       // Everything above this line talks to the world; everything below is a
       // pure function of what it returned, and is tested as one.
@@ -197,6 +248,10 @@ final class PortMonitor: ObservableObject {
         guard let self else { return }
         self.entries = entries
         self.activity = activity
+        self.cmuxPassword = cmuxPassword
+        // Tooltips cache per pid; a machine that churns dev servers would
+        // otherwise accumulate command lines for thousands of dead pids.
+        self.commandCache = self.commandCache.filter { table.byPid[$0.key] != nil }
         if self.busiest != busiest { self.busiest = busiest }
         self.cmuxStatus = cmuxStatus
         // Only transitions are logged — a per-refresh line would bury the
