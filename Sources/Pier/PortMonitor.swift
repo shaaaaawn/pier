@@ -168,7 +168,8 @@ final class PortMonitor: ObservableObject {
       let assembled = MonitorAssembly.ports(
         from: ProbeOutput(
           sockets: socketsOut, processTable: psOut, commandLines: fullPS, cmux: cmux,
-          terminalInfo: { TerminalSessions.read(pid: $0) }))
+          terminalInfo: { TerminalSessions.read(pid: $0) },
+          projectInfo: { DevServers.readProject($0) }))
       // Stamp each row with its process's start time (libproc, ~1 µs per pid)
       // so a kill from a stale row can tell a recycled pid apart.
       var starts: [Int32: UInt64] = [:]

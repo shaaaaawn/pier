@@ -18,6 +18,9 @@ enum DebugFlags {
     if let dir = value(after: "--render-fixture-statusitem", in: args) {
       MainActor.assumeIsolated { StatusItemFixture.render(to: dir) }
     }
+    if let dir = value(after: "--render-fixture-dev", in: args) {
+      MainActor.assumeIsolated { DevFixture.render(to: dir) }
+    }
     if let dir = value(after: "--render-fixture-terminals", in: args) {
       MainActor.assumeIsolated { TerminalFixture.render(to: dir) }
     }
@@ -166,6 +169,18 @@ enum DebugFlags {
         let extra = row.primary.attribution.rowBadge(inGroup: group.title)
         print(
           "      \(row.primary.port) \(row.primary.processName)\(extra.map { " · " + $0 } ?? "")")
+      }
+    }
+    // The Dev scope: what the classifier calls a dev server, by project.
+    let dev = monitor.groups(matching: "", filter: .dev, hideSystem: false)
+    print("dev servers (\(dev.reduce(0) { $0 + $1.entryCount })):")
+    for group in dev {
+      print("  \(group.title)")
+      for row in group.rows {
+        let e = row.primary
+        print(
+          "      \(e.port) \(e.dev?.framework ?? "?") — \(e.processName) · \(e.attribution.badgeLabel)"
+        )
       }
     }
     print("cmux: \(monitor.cmuxStatus)")

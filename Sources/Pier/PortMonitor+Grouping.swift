@@ -49,15 +49,20 @@ extension PortMonitor {
   ) -> [PortEntry] {
     guard filter.showsPorts else { return [] }
     return entries.filter { entry in
-      !(hideSystem && entry.attribution == .system)
+      if filter == .dev, entry.dev == nil { return false }
+      return !(hideSystem && entry.attribution == .system)
     }
   }
 
   /// Filtered, grouped (attributed first, Other, then System), clustered by
   /// pid+attribution, ordered by `sort`. Pure/static for testability.
+  ///
+  /// `byProject` (the Dev scope) heads each section with the dev server's
+  /// project instead of the harness that launched it — "what am I running"
+  /// is answered by project; the harness stays visible as the row's badge.
   nonisolated static func buildGroups(
     entries: [PortEntry], matching query: String, sort: PortSort = .port,
-    history: UsageHistory = UsageHistory()
+    history: UsageHistory = UsageHistory(), byProject: Bool = false
   ) -> [PortGroup] {
     var groupOrder: [String] = []
     var rankByTitle: [String: Int] = [:]
@@ -65,13 +70,13 @@ extension PortMonitor {
     var bucketOrderByTitle: [String: [String]] = [:]
 
     for entry in entries {
-      let title = entry.attribution.groupTitle
+      let title = byProject ? (entry.dev?.project ?? "Other") : entry.attribution.groupTitle
       if bucketsByTitle[title] == nil {
         groupOrder.append(title)
         bucketsByTitle[title] = [:]
         bucketOrderByTitle[title] = []
       }
-      rankByTitle[title] = entry.attribution.groupRank
+      rankByTitle[title] = byProject ? 0 : entry.attribution.groupRank
       let key = "\(entry.pid)|\(entry.attribution.badgeLabel)"
       if bucketsByTitle[title]![key] == nil {
         bucketOrderByTitle[title]!.append(key)
@@ -95,7 +100,8 @@ extension PortMonitor {
           )
         }
         .sorted { ActivityRank.areInOrder($0.primary, $1.primary, sort: sort, history: history) }
-        return PortGroup(title: title, rank: rankByTitle[title] ?? 1, rows: rows)
+        return PortGroup(
+          title: title, rank: rankByTitle[title] ?? 1, rows: rows, isProject: byProject)
       }
       .filter { !$0.rows.isEmpty }
       .sorted { a, b in
@@ -129,7 +135,7 @@ extension PortMonitor {
   ) -> [PortGroup] {
     Self.buildGroups(
       entries: Self.visibleEntries(entries, filter: filter, hideSystem: hideSystem),
-      matching: query, sort: sort, history: history)
+      matching: query, sort: sort, history: history, byProject: filter == .dev)
   }
 
   /// Count shown in the header: what the current scope/search actually lists.

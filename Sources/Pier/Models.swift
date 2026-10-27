@@ -129,6 +129,8 @@ struct PortEntry: Identifiable, Equatable {
   /// it first: the row can be seconds old, and by then the pid may belong to
   /// a different process.
   var startTime: UInt64?
+  /// Set when this port is a dev server you're running (see `DevServers`).
+  var dev: DevServer?
 
   var id: String { "\(pid):\(port):\(proto.rawValue)" }
   var bindSummary: String { bindAddresses.joined(separator: ", ") }
@@ -169,6 +171,7 @@ struct PortEntry: Identifiable, Equatable {
     let q = query.lowercased()
     return String(port).contains(q)
       || processName.lowercased().contains(q)
+      || (dev?.label.lowercased().contains(q) ?? false)
       || attribution.badgeLabel.lowercased().contains(q)
       || attribution.groupTitle.lowercased().contains(q)
       || bindAddresses.contains { $0.lowercased().contains(q) }
@@ -198,6 +201,8 @@ struct PortGroup: Identifiable {
   let title: String
   let rank: Int
   let rows: [PortRow]
+  /// Headed by a dev server's project (the Dev scope), not an attribution.
+  var isProject = false
   var id: String { title }
   var entryCount: Int { rows.reduce(0) { $0 + $1.entries.count } }
 }
@@ -228,6 +233,7 @@ enum PierSection: Identifiable {
 /// composes with the search text and the hide-system toggle.
 enum PierFilter: String, CaseIterable, Identifiable {
   case all
+  case dev
   case ports
   case containers
   case mcp
@@ -237,6 +243,7 @@ enum PierFilter: String, CaseIterable, Identifiable {
   var label: String {
     switch self {
     case .all: return "All"
+    case .dev: return "Dev"
     case .ports: return "Ports"
     // Umbrella over both engines — the Docker and Apple Containers sections
     // sit side by side beneath it, neither nested under the other.
@@ -248,6 +255,7 @@ enum PierFilter: String, CaseIterable, Identifiable {
   var symbol: String {
     switch self {
     case .all: return "square.grid.2x2"
+    case .dev: return "hammer"
     case .ports: return "network"
     case .containers: return "shippingbox"
     case .mcp: return "bolt.horizontal.circle"
@@ -257,7 +265,7 @@ enum PierFilter: String, CaseIterable, Identifiable {
   /// Does this scope show listening-port rows at all?
   var showsPorts: Bool {
     switch self {
-    case .all, .ports: return true
+    case .all, .dev, .ports: return true
     case .containers, .mcp: return false
     }
   }
@@ -270,7 +278,7 @@ enum PierFilter: String, CaseIterable, Identifiable {
     // guests that quietly hold gigabytes of RAM.
     case .containers: return [.docker, .apple, .simulator]
     case .mcp: return [.mcp]
-    case .ports: return []
+    case .dev, .ports: return []
     }
   }
 

@@ -37,7 +37,9 @@ enum StatusItemFixture {
         button.isBordered = false
         button.image = icon
         button.imagePosition = .imageLeading
-        button.attributedTitle = StatusTitle.make(count: 45, unseen: unseen, pressure: pressure)
+        let title = StatusTitle.make(unseen: unseen, pressure: pressure)
+        button.attributedTitle = title
+        button.imagePosition = title.length == 0 ? .imageOnly : .imageLeading
         root.addSubview(button)
       }
       let window = NSWindow(

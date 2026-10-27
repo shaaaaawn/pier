@@ -40,13 +40,17 @@ This rebuilds Pier, stops an existing Pier process, and opens the new app bundle
 
 ## First launch
 
-Look for the pier glyph and a listening-port count in the menu bar. Select it to
-open the panel.
+Look for the pier glyph in the menu bar and select it to open the panel. Hover
+it for the listening-port count. A plain `•` beside it means there are start or
+stop events you haven't seen; an orange or red `●` means macOS reports memory
+pressure. If the icon is hidden by a crowded menu bar, open Pier again from
+Spotlight or Finder and the panel appears anyway.
 
 From the panel you can:
 
 1. search by port, process, harness, or workspace;
-2. switch between All, Ports, Containers, and MCP scopes;
+2. switch between All, Dev, Ports, Containers, and MCP scopes — Dev lists only
+   the dev servers you're running, by project;
 3. expand a supported row to preview a local web app or view logs;
 4. hover a row for process details and available actions;
 5. open the event feed to see recently started or stopped work.

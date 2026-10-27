@@ -39,11 +39,12 @@ found:
 
 | Probe | Answers |
 |---|---|
-| `--print-groups` | the exact sections/rows the panel would show (attribution end-to-end) |
+| `--print-groups` | the exact sections/rows the panel would show (attribution end-to-end), then the Dev scope: each dev server's framework, by project |
 | `--print-activity` | live Docker / Apple Containers / Simulators / MCP detection, with usage |
 | `--print-memory` | RAM / swap glance, pressure + menu bar tint, disk free — live, then fixtures |
 | `--render-fixture-simulators <dir>` | the Simulators section at 340 and 440 pt, no device needed |
 | `--render-fixture-terminals <dir>` | Ghostty / Terminal tab groups at 340 and 440 pt |
+| `--render-fixture-dev <dir>` | dev servers among their noise, All and Dev scopes, 340 and 440 pt |
 | `--render-fixture-statusitem <dir>` | the menu bar item in light and dark mode, each pressure level |
 | `--appearance light\|dark` | add to any `--render-fixture*`; renders are pinned to dark otherwise |
 | `--print-docker` / `--print-apple` | engine state + reclaimable space (read-only, never prunes) |

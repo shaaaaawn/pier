@@ -75,7 +75,11 @@ enum ActivityRank {
   /// gets swamped by CPU noise from the band below it.
   static func score(_ entry: PortEntry, series: [Double]) -> Double {
     var score = 0.0
-    if isLikelyWebServer(entry) {
+    // A recognised dev server is the strongest evidence there is: it outranks
+    // the name/port heuristics below, which it supersedes when it applies.
+    if entry.dev != nil {
+      score += 1_500
+    } else if isLikelyWebServer(entry) {
       // Two tiers: a server runtime is real evidence, a conventional port
       // number is only a hint. Flat scoring let anything squatting :5000
       // outrank a genuine dev server.

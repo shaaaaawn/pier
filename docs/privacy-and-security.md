@@ -30,6 +30,11 @@ Pier performs bounded local queries:
 - optionally, `cmux top` for workspace and surface attribution;
 - `proc_pidinfo` for the tty and working directory of a Ghostty or Terminal
   tab's shell, to group its ports by tab;
+- `proc_pidinfo` for the working directory of a listening process, then the
+  nearest project marker above it (`package.json`, `pyproject.toml`, `.git`, …)
+  and the `name` field of its `package.json` (first 64 KB only), to name dev
+  servers. Only directories under your home folder are read. Pier never sends
+  requests to listening ports to identify them;
 - only when you open the logs for a port in a Terminal.app tab, that tab's
   scrollback, through `osascript` and Terminal's AppleScript `history`. macOS
   asks for Automation permission the first time;

@@ -55,7 +55,7 @@ extension PortListView {
         if let extra {
           badge(entry.attribution, text: extra)
         }
-        subline(entry, emphasized: extra == nil)
+        subline(entry, emphasized: extra == nil, groupTitle: groupTitle)
       }
       Spacer(minLength: 4)
       trailingSlot(entry)
@@ -123,12 +123,12 @@ extension PortListView {
             badge(entry.attribution, text: extra)
             countChip(row.totalCount)
           }
-          subline(entry)
+          subline(entry, groupTitle: groupTitle)
         } else {
           // No badge to stack above, so the count rides the process line
           // instead of floating alone on its own row.
           HStack(spacing: 5) {
-            subline(entry, emphasized: true)
+            subline(entry, emphasized: true, groupTitle: groupTitle)
             countChip(row.totalCount)
           }
         }
@@ -277,14 +277,34 @@ extension PortListView {
       .foregroundStyle(.secondary)
   }
 
+  /// The row's name: a dev server's framework and project, else the process.
+  static func rowName(_ entry: PortEntry, groupTitle: String?) -> String {
+    guard let dev = entry.dev else { return entry.processName }
+    return dev.project != nil && dev.project == groupTitle ? dev.framework : dev.label
+  }
+
   /// `emphasized` promotes the process name to the row's primary line — used
   /// when the badge was dropped as redundant with the group header.
-  func subline(_ entry: PortEntry, emphasized: Bool = false) -> some View {
+  ///
+  /// A dev server is named for what it is — "Angular · shawns-www" — instead
+  /// of its runtime ("node"), which is the same word for half the list. Under
+  /// a project header (the Dev scope) the project is dropped as repetition.
+  func subline(
+    _ entry: PortEntry, emphasized: Bool = false, groupTitle: String? = nil
+  ) -> some View {
     HStack(spacing: 5) {
+      if entry.dev != nil {
+        Image(systemName: "hammer")
+          .font(.system(size: 9))
+          .foregroundStyle(.secondary)
+          .help("Dev server")
+      }
       // verbatim: Text() localizes interpolated Ints (grouping separators in pids)
-      Text(verbatim: entry.processName)
+      Text(verbatim: Self.rowName(entry, groupTitle: groupTitle))
         .font(.system(size: emphasized ? 12 : 11, weight: emphasized ? .medium : .regular))
         .foregroundStyle(emphasized ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+        // The name is what the row is for; pid and bind address give way first.
+        .layoutPriority(1)
       Text(verbatim: "· \(entry.pid)")
       if entry.proto == .udp {
         Text("UDP")

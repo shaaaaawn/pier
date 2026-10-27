@@ -10,7 +10,6 @@ recoverable cases at launch:
 | App Nap drops a windowless app's status item | Holds a lifetime activity assertion |
 | Persisted `NSStatusItem VisibleCC` is false | Clears stale visibility once |
 | Persisted preferred position is off-screen | Clears it before creating the item |
-| No saved position: macOS puts a new item at the far left, the first slot a crowded bar or the notch hides | Starts beside the system items instead; a ⌘-drag still wins |
 | macOS force-hides the item | Detects and logs the state |
 
 Whatever the cause, **open Pier again** — from Spotlight, Finder, or
