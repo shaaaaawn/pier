@@ -35,15 +35,15 @@ enum MemoryProbe {
     }
   }
 
-  /// Three states worth grading: a healthy busy Mac (this dev machine's real
-  /// shape — heavy compression, no swap), pressure building, and critical with
-  /// pages actively going out.
   /// Heat to pair with each memory state, so the footer is graded with the
   /// CPU glance in every state it can show: cool, Hot (throttling), Very hot.
   static let heat: [String: (thermal: ThermalLevel, cpu: Double)] = [
     "normal": (.nominal, 0.22), "warning": (.serious, 0.78), "critical": (.critical, 0.96),
   ]
 
+  /// Three states worth grading: a healthy busy Mac (this dev machine's real
+  /// shape — heavy compression, no swap), pressure building, and critical with
+  /// pages actively going out.
   static let fixtures: [(name: String, snapshot: MemorySnapshot)] = {
     func gb(_ x: Double) -> UInt64 { UInt64(x * MemoryFormat.gigabyte) }
     return [
