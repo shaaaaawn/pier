@@ -235,20 +235,37 @@ enum DevServers {
     return DevServer(framework: framework!, project: info?.name, projectPath: info?.root)
   }
 
-  /// Two projects with the same name ("api" in two repos, or the same repo
-  /// checked out twice) read identically; add the parent folder to each.
+  /// Two projects with the same name ("api" in two repos, or one repo checked
+  /// out twice) read identically. Each gets the shortest run of its parent
+  /// folders that tells it apart: "idle-server (lanes/a)" vs "(scratch/a)" —
+  /// one folder ("(a)" and "(a)") wasn't always enough.
   static func disambiguate(_ servers: [DevServer?]) -> [DevServer?] {
     var paths: [String: Set<String>] = [:]
     for server in servers.compactMap({ $0 }) {
       guard let name = server.project, let path = server.projectPath else { continue }
       paths[name, default: []].insert(path)
     }
+    var suffix: [String: String] = [:]
+    for (_, group) in paths where group.count > 1 {
+      let parents = group.map { path in
+        URL(fileURLWithPath: path).deletingLastPathComponent().pathComponents.filter { $0 != "/" }
+      }
+      let deepest = parents.map(\.count).max() ?? 1
+      var depth = 1
+      while depth < deepest,
+        Set(parents.map { $0.suffix(depth).joined(separator: "/") }).count < group.count
+      {
+        depth += 1
+      }
+      for (path, parent) in zip(group, parents) {
+        suffix[path] = parent.suffix(depth).joined(separator: "/")
+      }
+    }
     return servers.map { server in
       guard var server, let name = server.project, let path = server.projectPath,
-        (paths[name]?.count ?? 0) > 1
+        let tail = suffix[path]
       else { return server }
-      let parent = URL(fileURLWithPath: path).deletingLastPathComponent().lastPathComponent
-      server.project = "\(name) (\(parent))"
+      server.project = "\(name) (\(tail))"
       return server
     }
   }

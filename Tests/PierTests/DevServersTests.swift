@@ -130,6 +130,16 @@ final class DevServersTests: XCTestCase {
     XCTAssertEqual(out.map { $0?.project }, ["api (b)", nil, "api (f)", "site"])
   }
 
+  /// Same name *and* same parent folder name: one folder isn't enough, so
+  /// the label grows until the two differ.
+  func testSameNamedProjectsWithSameParentNameGoDeeper() {
+    let a = DevServer(framework: "Wrangler", project: "api", projectPath: "/Users/you/lanes/a/api")
+    let b = DevServer(
+      framework: "Wrangler", project: "api", projectPath: "/Users/you/scratch/a/api")
+    XCTAssertEqual(
+      DevServers.disambiguate([a, b]).map { $0?.project }, ["api (lanes/a)", "api (scratch/a)"])
+  }
+
   func testProjectRootAndManifestName() {
     let files: Set<String> = ["/Users/you/code/store/package.json"]
     let info = DevServers.readProject(
