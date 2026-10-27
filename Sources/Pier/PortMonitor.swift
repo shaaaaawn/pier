@@ -167,7 +167,8 @@ final class PortMonitor: ObservableObject {
       let assembled = MonitorAssembly.ports(
         from: ProbeOutput(
           sockets: socketsOut, processTable: psOut, commandLines: fullPS, cmux: cmux,
-          terminalInfo: { TerminalSessions.read(pid: $0) }))
+          terminalInfo: { TerminalSessions.read(pid: $0) },
+          projectInfo: { DevServers.readProject($0) }))
       let entries = assembled.entries
       let table = assembled.table
 

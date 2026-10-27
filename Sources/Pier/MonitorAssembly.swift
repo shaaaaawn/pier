@@ -20,6 +20,9 @@ struct ProbeOutput {
   /// tty + working directory of a terminal tab's session leader. libproc in a
   /// real refresh; tests and fixtures supply a table or nothing.
   var terminalInfo: @Sendable (Int32) -> TerminalSessionInfo? = { _ in nil }
+  /// A directory → its project (manifest name, root). Disk reads in a real
+  /// refresh; nothing in tests and fixtures unless they supply a table.
+  var projectInfo: @Sendable (String) -> ProjectInfo? = { _ in nil }
 }
 
 /// The assembled result, plus the intermediate tables the caller still needs.
@@ -52,6 +55,23 @@ enum MonitorAssembly {
       // outside the terminal running it.
       entries[i].cmuxSurfaceRef =
         probe.cmux?.surfaceHit(chain: table.chain(from: entries[i].pid).map(\.pid))?.ref
+    }
+    // Dev servers: one project lookup per directory per refresh — several
+    // ports usually share a project.
+    var projects: [String: ProjectInfo?] = [:]
+    let dev = entries.map { entry in
+      DevServers.classify(
+        port: entry.port, chain: table.chain(from: entry.pid), commands: commands,
+        directory: { probe.terminalInfo($0)?.directory },
+        project: { dir in
+          if let cached = projects[dir] { return cached }
+          let info = probe.projectInfo(dir)
+          projects[dir] = info
+          return info
+        })
+    }
+    for (i, server) in DevServers.disambiguate(dev).enumerated() {
+      entries[i].dev = server
     }
     return AssembledPorts(entries: entries, table: table, commands: commands)
   }

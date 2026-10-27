@@ -49,7 +49,8 @@ Spotlight or Finder and the panel appears anyway.
 From the panel you can:
 
 1. search by port, process, harness, or workspace;
-2. switch between All, Ports, Containers, and MCP scopes;
+2. switch between All, Dev, Ports, Containers, and MCP scopes — Dev lists only
+   the dev servers you're running, by project;
 3. expand a supported row to preview a local web app or view logs;
 4. hover a row for process details and available actions;
 5. open the event feed to see recently started or stopped work.

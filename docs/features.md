@@ -16,6 +16,24 @@ For each listener, Pier walks the process ancestry and combines two signals:
   directory in-process with libproc; no permission is needed. An agent nearer
   the process still wins: Claude Code run in a Ghostty tab stays "Claude Code".
 
+**Dev servers** are named for what they are — "Angular · storefront",
+"Wrangler · api", "Vite · site" — instead of their runtime (`node`), and the
+**Dev** scope lists only them, grouped by project. Detection is local and
+passive, in three layers:
+
+1. Rule out noise: system binaries, anything inside an app bundle (browsers,
+   Google Drive, editor helpers), browsers with a remote-debugging port, MCP
+   servers, agent harnesses' own sockets, and local services such as adb or
+   databases.
+2. Rule out a dev tool's plumbing: `--inspect` / `--inspector-addr` debugger
+   ports, and every workerd port except its `entry` socket (Wrangler's own
+   proxy included).
+3. Name what's left from its command line (Angular, Next.js, Vite, Wrangler,
+   Rails, Django, … — about 35 signatures), else count a runtime running a
+   script (`node server.mjs`, `python -m …`) when it runs in a project under
+   your home folder. The project is the nearest `package.json` / `pyproject.toml`
+   / `.git` above its working directory, named by `package.json`'s `name`.
+
 The process itself wins before its launcher. This prevents a helper launched by
 an agent from being mislabeled as the launcher when Pier recognizes the helper.
 System services are separated from user development work.
@@ -23,7 +41,7 @@ System services are separated from user development work.
 ## Search, scopes, and sorting
 
 Search matches ports, process names, harnesses, and workspaces. Scope chips
-filter All, Ports, Containers, or MCP entries. Sections can be collapsed,
+filter All, Dev, Ports, Containers, or MCP entries. Sections can be collapsed,
 and system processes can be hidden.
 
 Available sort orders:
