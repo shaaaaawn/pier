@@ -114,7 +114,7 @@ Orchestration and UI:
 - `scripts/build-app.sh` — SPM build → `dist/Pier.app`, copies
   `Pier_Pier.bundle` (SPM executable resources — `Bundle.module` resolves only
   if it's in `Contents/Resources/`) and `assets/Pier.icns`, ad-hoc signs.
-- `scripts/render-icons.sh` — `assets/icon.svg` → PNG/icns; backend auto-detected
+- `scripts/render-icons.sh` — `assets/app-icon.svg` → icns; backend auto-detected
   (rsvg-convert → Chrome headless → Playwright → qlmanage).
 - `Tests/PierTests` — headless tests over pure functions and captured output. No
   UI tests; fixture renders and live probes cover that ground instead.

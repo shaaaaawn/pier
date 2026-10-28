@@ -17,16 +17,14 @@ extension PortListView {
 
   var header: some View {
     HStack(spacing: 7) {
-      if let image = Bundle.module.image(forResource: "menubar-icon") {
-        // .template + foregroundStyle so the glyph follows the appearance
-        // (dark on light, light on dark) instead of baking in one color.
-        Image(nsImage: image)
-          .renderingMode(.template)
-          .resizable()
-          .frame(width: 15, height: 15)
-          .foregroundStyle(.primary)
-          .opacity(0.85)
-      }
+      // .template + foregroundStyle so the glyph follows the appearance
+      // (dark on light, light on dark) instead of baking in one color.
+      Image(nsImage: PierGlyph.image())
+        .renderingMode(.template)
+        .resizable()
+        .frame(width: 15, height: 15)
+        .foregroundStyle(.primary)
+        .opacity(0.85)
       Text("Pier")
         .font(.system(size: 13, weight: .semibold))
       Spacer()

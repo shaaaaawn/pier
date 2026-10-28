@@ -17,9 +17,9 @@ fi
 BIN=".build/$CONFIG/Pier"
 APP="dist/Pier.app"
 
-# Icons are checked in as SVG; render PNG/icns on first build (or after
+# The app icon is checked in as SVG; render the icns on first build (or after
 # `scripts/render-icons.sh` is run manually).
-if [[ ! -f assets/Pier.icns || ! -f Sources/Pier/Resources/menubar-icon.png ]]; then
+if [[ ! -f assets/Pier.icns ]]; then
   echo "==> Rendering icons"
   ./scripts/render-icons.sh
 fi
