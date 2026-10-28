@@ -28,6 +28,7 @@ enum FixtureDefaults {
   static let keys: [String] = [
     "listFilter", "portSort", "hideSystem", "previewViewport",
     PanelSize.widthKey, PanelSize.heightKey, HiddenPorts.defaultsKey,
+    WatchedPorts.defaultsKey, NotifyRules.devStopsKey,
   ]
 
   private static var saved: [String: Any?] = [:]
@@ -49,6 +50,8 @@ enum FixtureDefaults {
     defaults.set(Double(PanelSize.defaultWidth), forKey: PanelSize.widthKey)
     defaults.set(Double(PanelSize.defaultHeight), forKey: PanelSize.heightKey)
     defaults.set("", forKey: HiddenPorts.defaultsKey)
+    defaults.set("", forKey: WatchedPorts.defaultsKey)
+    defaults.set(false, forKey: NotifyRules.devStopsKey)
   }
 
   /// `--appearance light|dark` (default dark). Pinned like every other input:

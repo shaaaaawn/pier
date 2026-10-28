@@ -27,6 +27,8 @@ struct PortListView: View {
   /// Live panel width, so the preview's viewport math follows a resize.
   @AppStorage(PanelSize.widthKey) var storedWidth = Double(PanelSize.defaultWidth)
   @AppStorage(PanelSize.heightKey) var storedHeight = Double(PanelSize.defaultHeight)
+  /// Read here so a row's bell appears the moment you watch its port.
+  @AppStorage(WatchedPorts.defaultsKey) var watchedPortsText = ""
   /// The one pending confirmation. Deliberately a single piece of state:
   /// stacking several `.alert(item:)` modifiers on one view means SwiftUI
   /// presents only one of them, which silently swallowed the force-kill

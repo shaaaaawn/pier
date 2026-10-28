@@ -51,5 +51,6 @@ extension PortMonitor {
     }
     events = (fresh.reversed() + events).prefix(Self.maxEvents).map { $0 }
     unseenEvents += fresh.filter { !$0.selfInitiated }.count
+    Notifier.shared.handle(fresh)
   }
 }
