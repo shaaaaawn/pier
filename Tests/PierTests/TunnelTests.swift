@@ -114,6 +114,9 @@ final class TunnelTests: XCTestCase {
     XCTAssertEqual(entries[0].tunnel, TunnelLink(provider: .cloudflare, publicURL: url))
     XCTAssertEqual(entries[1].role, "Cloudflare Tunnel → :3000")
     XCTAssertNil(entries[1].tunnel)
+    XCTAssertEqual(
+      entries[1].tunnelEndpoint,
+      TunnelEndpoint(link: TunnelLink(provider: .cloudflare, publicURL: url), deadTargets: []))
     XCTAssertEqual(entries[2].role, "ngrok → :8080")
     XCTAssertEqual(entries[3].tunnel?.publicURL, nil)
     XCTAssertEqual(entries[3].tunnel?.help, "Public via ngrok — its address isn't known yet")
@@ -134,5 +137,28 @@ final class TunnelTests: XCTestCase {
     ])
     XCTAssertEqual(
       resolved, [ResolvedTunnel(pid: 99, provider: .cloudflare, target: 3000, publicURL: nil)])
+  }
+
+  /// The case a real run hit: a quick tunnel to a port nothing serves. No row
+  /// can be marked public, so the tunnel's own row carries the address and
+  /// says its target is down.
+  func testTunnelToNothingKeepsItsAddressOnItsOwnRow() {
+    var entries = [
+      PortEntry(
+        pid: 20, port: 20241, proto: .tcp, processName: "cloudflared", user: "dev",
+        bindAddresses: ["127.0.0.1"], attribution: .none),
+      PortEntry(
+        pid: 20, port: 59038, proto: .udp, processName: "cloudflared", user: "dev",
+        bindAddresses: ["*"], attribution: .none),
+    ]
+    let url = URL(string: "https://amanda-cooking-reasoning-described.trycloudflare.com")!
+    Tunnels.apply(
+      [ResolvedTunnel(pid: 20, provider: .cloudflare, target: 5173, publicURL: url)], to: &entries)
+    for entry in entries {
+      XCTAssertEqual(entry.role, "Cloudflare Tunnel → :5173")
+      XCTAssertEqual(entry.tunnelEndpoint?.link.publicURL, url)
+      XCTAssertEqual(entry.tunnelEndpoint?.deadTargets, [5173])
+      XCTAssertNil(entry.tunnel)
+    }
   }
 }

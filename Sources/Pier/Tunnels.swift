@@ -33,6 +33,13 @@ struct TunnelLink: Equatable, Sendable {
   }
 }
 
+/// On a tunnel's own rows: its public address, and the targets it forwards to
+/// that nothing is listening on — a visitor there gets the tunnel's error page.
+struct TunnelEndpoint: Equatable, Sendable {
+  var link: TunnelLink
+  var deadTargets: [Int] = []
+}
+
 /// A running tunnel process, as its command line and sockets describe it.
 struct TunnelProcess: Equatable, Sendable {
   let pid: Int32
@@ -164,13 +171,21 @@ enum Tunnels {
   /// expose as public.
   static func apply(_ tunnels: [ResolvedTunnel], to entries: inout [PortEntry]) {
     let byPid = Dictionary(grouping: tunnels, by: \.pid)
+    let listening = Set(
+      entries.filter { $0.proto == .tcp && byPid[$0.pid] == nil }.map(\.port))
     for i in entries.indices {
       if let mine = byPid[entries[i].pid], let first = mine.first {
-        let targets = mine.compactMap(\.target).map { ":\($0)" }
+        let targets = mine.compactMap(\.target)
         entries[i].role =
           targets.isEmpty
           ? first.provider.displayName
-          : "\(first.provider.displayName) → \(targets.joined(separator: ", "))"
+          : "\(first.provider.displayName) → \(targets.map { ":\($0)" }.joined(separator: ", "))"
+        // The address lives here too: with nothing on the target there's no
+        // other row to put it on, and that's exactly when you need to know.
+        entries[i].tunnelEndpoint = TunnelEndpoint(
+          link: TunnelLink(
+            provider: first.provider, publicURL: mine.lazy.compactMap(\.publicURL).first),
+          deadTargets: targets.filter { !listening.contains($0) })
         continue
       }
       guard entries[i].proto == .tcp,

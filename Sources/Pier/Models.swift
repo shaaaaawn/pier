@@ -135,6 +135,8 @@ struct PortEntry: Identifiable, Equatable {
   var detached = false
   /// Reachable from the internet through a tunnel (Cloudflare, ngrok).
   var tunnel: TunnelLink?
+  /// On a tunnel's own rows: where it's public and whether its target is up.
+  var tunnelEndpoint: TunnelEndpoint?
   /// What the process is, when its name undersells it: a tunnel's own
   /// listener reads "ngrok → :3000", not "ngrok".
   var role: String?

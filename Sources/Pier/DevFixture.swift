@@ -9,7 +9,8 @@ enum DevFixture {
   static func port(
     _ pid: Int32, _ port: Int, _ name: String, _ attribution: Attribution,
     dev: DevServer? = nil, cpu: Double = 0.4, binds: [String] = ["127.0.0.1"],
-    detached: Bool = false, tunnel: TunnelLink? = nil, role: String? = nil
+    detached: Bool = false, tunnel: TunnelLink? = nil, role: String? = nil,
+    endpoint: TunnelEndpoint? = nil
   ) -> PortEntry {
     var entry = PortEntry(
       pid: pid, port: port, proto: .tcp, processName: name, user: "dev",
@@ -19,6 +20,7 @@ enum DevFixture {
     entry.detached = detached
     entry.tunnel = tunnel
     entry.role = role
+    entry.tunnelEndpoint = endpoint
     return entry
   }
 
@@ -50,7 +52,11 @@ enum DevFixture {
     port(
       41_388, 20_241, "cloudflared",
       .terminal(TerminalSession(app: .ghostty, directory: "~/code/site", tty: "ttys006")),
-      role: "Cloudflare Tunnel → :5173"),
+      role: "Cloudflare Tunnel → :5173",
+      endpoint: TunnelEndpoint(
+        link: TunnelLink(
+          provider: .cloudflare,
+          publicURL: URL(string: "https://brave-otter-lake.trycloudflare.com")))),
     // The noise the classifier rules out.
     port(56_112, 56_112, "Google Chrome for Testing", .harness("Claude Code")),
     port(56_202, 56_202, "Google Chrome for Testing", .harness("Claude Code")),

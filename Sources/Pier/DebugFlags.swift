@@ -213,9 +213,16 @@ enum DebugFlags {
     let tunneled = monitor.entries.filter { $0.tunnel != nil || $0.role != nil }
     print("tunnels (\(tunneled.count)):")
     for e in tunneled.sorted(by: { $0.port < $1.port }) {
-      let detail =
+      var detail =
         e.tunnel.map { "public — \($0.publicURL?.absoluteString ?? "address pending")" }
         ?? e.role ?? ""
+      if let endpoint = e.tunnelEndpoint {
+        detail += " — \(endpoint.link.publicURL?.absoluteString ?? "address pending")"
+        if !endpoint.deadTargets.isEmpty {
+          detail +=
+            " [NO SERVER on \(endpoint.deadTargets.map { ":\($0)" }.joined(separator: ", "))]"
+        }
+      }
       print("      \(e.port) \(e.processName) · \(detail)")
     }
     print("cmux: \(monitor.cmuxStatus)")
