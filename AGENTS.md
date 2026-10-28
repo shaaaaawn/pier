@@ -76,8 +76,9 @@ Two rules learned the hard way:
 - **Probes can have side effects on the user's app.** `--probe-resize-perf`
   persists panel sizes as part of measuring the old code path, which once left
   the live panel stuck at its minimum size. Check what a probe writes before
-  running it repeatedly, and reset after: `defaults delete com.hermosalabs.pier
-  panelWidth panelHeight`.
+  running it repeatedly, and reset after — `defaults delete` takes **one key
+  per call** on current macOS:
+  `defaults delete com.hermosalabs.pier panelWidth && defaults delete com.hermosalabs.pier panelHeight`.
 
 ## Architecture
 

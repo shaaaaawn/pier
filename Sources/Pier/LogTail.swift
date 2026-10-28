@@ -220,6 +220,11 @@ final class LogTailer: ObservableObject {
   func stop() {
     pollTimer?.invalidate()
     pollTimer = nil
+    // Clear the reader *before* terminating: a process that ignores SIGTERM
+    // would keep the handler firing chunks into a drawer nobody is watching —
+    // the same shape as the closed-panel CPU trap, on the streaming side.
+    (process?.standardOutput.flatMap { $0 as? Pipe })?.fileHandleForReading
+      .readabilityHandler = nil
     if let process, process.isRunning {
       process.terminationHandler = nil
       process.terminate()

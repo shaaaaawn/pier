@@ -122,9 +122,42 @@ final class PierLog: @unchecked Sendable {
 
   /// Backstop against a secret reaching the file if a caller ever logs
   /// something argv-shaped. Masks `--flag=value` / `KEY=value` where the key
-  /// looks credential-ish, and anything after a bare `password`/`token` word.
+  /// looks credential-ish, the same keywords in the shapes a CLI's *failure
+  /// text* prints (`--password hunter2`, `token: ghp_…`, `password "hunter2"`),
+  /// and `Bearer`/`Basic` scheme credentials. Over-masking a word is cheap;
+  /// a leaked credential is not.
   static func redact(_ message: String) -> String {
-    maskAssignments(in: message)
+    maskCredentialShapes(in: maskAssignments(in: message))
+  }
+
+  /// Credential keywords for the non-assignment shapes. Bare `auth` and `key`
+  /// are deliberately absent — "auth failed" and "keyboard" would mask
+  /// ordinary words — and `bearer`/`basic` get their own scheme rule below.
+  private static let shapeKeywords = "password|passwd|secret|token|apikey|api-key|credential"
+
+  private static func maskCredentialShapes(in text: String) -> String {
+    var result = text
+    func mask(_ pattern: String) {
+      guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+      else { return }
+      result = regex.stringByReplacingMatches(
+        in: result, range: NSRange(result.startIndex..., in: result),
+        withTemplate: "$1 ***")
+    }
+    let k = Self.shapeKeywords
+    // A flag and its space-separated value: `--password hunter2`,
+    // `--access-token ghp_…` ("token" matches with the flag prefix).
+    mask("(--[A-Za-z0-9-]*(?:\(k))[A-Za-z0-9-]*)[ \\t]+(\"[^\"]*\"|'[^']*'|\\S+)")
+    // A field or header: `token: ghp_…`. "token: expired" over-masks — the
+    // leak it prevents is worth more than the word it hides.
+    mask("(\\b(?:\(k))[ \\t]*:)[ \\t]*(\"[^\"]*\"|'[^']*'|\\S+)")
+    // A bare keyword with a *quoted* value only: `password "hunter2"`. The
+    // unquoted form is skipped on purpose — "token expired" is a message,
+    // not a secret.
+    mask("(\\b(?:\(k)))[ \\t]+(\"[^\"]*\"|'[^']*')")
+    // Auth schemes, wherever they appear: `Bearer eyJ…`, `Basic dXNlcjpw…`.
+    mask("\\b(bearer|basic)[ \\t]+[A-Za-z0-9._~+/=-]+")
+    return result
   }
 
   /// Credential-ish key fragments, matched against the *normalized* key (lower

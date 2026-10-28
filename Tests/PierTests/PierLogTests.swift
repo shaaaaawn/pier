@@ -36,6 +36,40 @@ final class PierLogTests: XCTestCase {
     XCTAssertEqual(PierLog.redact("Authorization=Bearer xyz"), "Authorization=*** xyz")
   }
 
+  /// Failure text — the one sanctioned path tool output reaches the log —
+  /// prints secrets in shapes `=`-masking misses: flags with a space, header
+  /// fields, quoted values, and auth schemes.
+  func testRedactsCredentialShapesFromFailureText() {
+    // A flag and its space-separated value.
+    XCTAssertEqual(
+      PierLog.redact("login failed: --password hunter2 --port 8080"),
+      "login failed: --password *** --port 8080")
+    XCTAssertEqual(
+      PierLog.redact("--access-token ghp_abc123 expired"), "--access-token *** expired")
+    // A field or header.
+    XCTAssertEqual(
+      PierLog.redact("invalid token: ghp_abc123"), "invalid token: ***")
+    XCTAssertEqual(
+      PierLog.redact("Authorization: Bearer eyJhbGciOi"), "Authorization: Bearer ***")
+    // A quoted value after a bare keyword.
+    XCTAssertEqual(
+      PierLog.redact("wrong password \"hunter2\" given"), "wrong password *** given")
+    // Schemes wherever they appear.
+    XCTAssertEqual(PierLog.redact("401 for Basic dXNlcjpwYXNz"), "401 for Basic ***")
+  }
+
+  /// Ordinary messages must survive: a keyword without a value behind it is
+  /// prose, not a credential.
+  func testRedactionLeavesPlainProseAlone() {
+    XCTAssertEqual(PierLog.redact("token expired"), "token expired")
+    XCTAssertEqual(
+      PierLog.redact("auth failed for keyboard-interactive"),
+      "auth failed for keyboard-interactive")
+    XCTAssertEqual(
+      PierLog.redact("cannot connect to the docker daemon"),
+      "cannot connect to the docker daemon")
+  }
+
   func testLeavesOrdinaryAssignmentsAlone() {
     XCTAssertEqual(
       PierLog.redact("docker prune --filter=until=24h"),

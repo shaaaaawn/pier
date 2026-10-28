@@ -96,8 +96,12 @@ Use the matching probe whenever a change touches a live integration:
 Reset the panel size after a resize performance probe:
 
 ```sh
-defaults delete com.hermosalabs.pier panelWidth panelHeight
+defaults delete com.hermosalabs.pier panelWidth
+defaults delete com.hermosalabs.pier panelHeight
 ```
+
+`defaults delete` takes one key per call on current macOS; a two-key
+invocation prints usage and deletes nothing.
 
 Do not run a probe that could unexpectedly trigger authentication, Keychain, or
 permission UI. Keep such behavior behind an explicit user action.
