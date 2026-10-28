@@ -140,7 +140,7 @@ enum Tunnels {
   static func parseQuickTunnel(_ data: Data) -> URL? {
     guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
       let host = object["hostname"] as? String, !host.isEmpty, host.count < 256,
-      !host.contains("/")
+      host.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == ".") })
     else { return nil }
     return URL(string: "https://\(host)")
   }

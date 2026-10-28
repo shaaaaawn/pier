@@ -59,6 +59,9 @@ final class TunnelTests: XCTestCase {
       Tunnels.parseQuickTunnel(quick)?.absoluteString, "https://brave-otter-lake.trycloudflare.com")
     XCTAssertNil(Tunnels.parseQuickTunnel(Data(#"{"hostname":""}"#.utf8)))
     XCTAssertNil(Tunnels.parseQuickTunnel(Data("not json".utf8)))
+    // The answer comes from a local process; only a bare hostname is believed.
+    XCTAssertNil(Tunnels.parseQuickTunnel(Data(#"{"hostname":"evil.example@good.com"}"#.utf8)))
+    XCTAssertNil(Tunnels.parseQuickTunnel(Data(#"{"hostname":"a.com?x=1#"}"#.utf8)))
 
     let ngrok = Data(
       #"""
