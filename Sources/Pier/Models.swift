@@ -43,18 +43,18 @@ enum Attribution: Equatable {
     }
   }
 
-  /// Brand icon resource basename (Resources/icons/<name>.png), if the
-  /// attribution resolved to a harness that has one bundled.
-  var iconName: String? {
+  /// Bundle IDs of the app whose icon stands for this attribution (see
+  /// `AppIcons`); empty when there's no harness behind it.
+  var iconApps: [String] {
     switch self {
     case .cmux(_, _, let harness):
-      return harness.flatMap { Attributor.iconName(forHarnessLabel: $0) }
+      return harness.map { Attributor.iconApps(forHarnessLabel: $0) } ?? []
     case .harness(let name):
-      return Attributor.iconName(forHarnessLabel: name)
+      return Attributor.iconApps(forHarnessLabel: name)
     case .terminal(let session):
-      return Attributor.iconName(forHarnessLabel: session.app.label)
+      return Attributor.iconApps(forHarnessLabel: session.app.label)
     case .system, .none:
-      return nil
+      return []
     }
   }
 

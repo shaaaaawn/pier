@@ -446,8 +446,10 @@ test` check.
 
 ## Before publishing / releasing
 
-- `Sources/Pier/Resources/icons/` holds ~39 third-party **trademarks**.
-  Redistribution is an unresolved licensing decision (README flags it).
+- Pier bundles **no third-party marks**: harness, terminal and engine icons are
+  read at runtime from the apps installed on the Mac (`AppIcons`, by bundle ID
+  in `harnessTable`). Don't add brand PNGs back to `Resources/`
+  (`IconResourceTests` fails if you do).
 - There is **no LICENSE file** — without one, published code is all-rights-reserved.
 - `dist/` and `.build/` are gitignored; the ad-hoc signed app is not for
   distribution (that needs Developer ID + notarization).

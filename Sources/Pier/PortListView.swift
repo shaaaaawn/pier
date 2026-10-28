@@ -396,21 +396,52 @@ struct VisualEffectBackground: NSViewRepresentable {
   func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
 
-/// Cached loader for harness brand icons bundled in Resources/icons/.
-/// Note: SPM's `.process` flattens PNGs to the bundle root, so no
-/// subdirectory is used in the lookup. A missing/unloadable icon returns
-/// nil and the UI falls back to text. Main-actor: only views read it, and the
-/// cache is unsynchronized.
+/// Icons for harnesses, terminals and engines, read from the apps installed
+/// on this Mac. Pier bundles no third-party marks: an agent you have the app
+/// for shows that app's icon, one you don't gets a monogram (`Monogram`).
+///
+/// Main-actor: only views read it, and the cache is unsynchronized. A miss is
+/// cached too, so LaunchServices is asked once per set of IDs per launch.
 @MainActor
-enum HarnessIcons {
-  static var cache: [String: NSImage?] = [:]
+enum AppIcons {
+  static var cache: [[String]: NSImage?] = [:]
+  /// Off for fixture renders, which must not depend on what's installed.
+  static var lookupEnabled = true
 
-  static func image(named name: String) -> NSImage? {
-    if let cached = cache[name] { return cached }
-    let image = Bundle.module
-      .url(forResource: name, withExtension: "png")
-      .flatMap { NSImage(contentsOf: $0) }
-    cache[name] = image
+  static func image(for bundleIDs: [String]) -> NSImage? {
+    guard lookupEnabled, !bundleIDs.isEmpty else { return nil }
+    if let cached = cache[bundleIDs] { return cached }
+    let image = bundleIDs.lazy
+      .compactMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
+      .first
+      .map { url -> NSImage in
+        // A 16pt drawing-handler image, so each draw picks the icon's best
+        // representation for the scale instead of shrinking the 1024px one.
+        let icon = NSWorkspace.shared.icon(forFile: url.path)
+        return NSImage(size: NSSize(width: 16, height: 16), flipped: false) { rect in
+          icon.draw(in: rect)
+          return true
+        }
+      }
+    cache[bundleIDs] = image
     return image
+  }
+}
+
+/// The stand-in for an agent with no app installed: its initial on a soft
+/// rounded square, sized like the app icons it sits among.
+struct Monogram: View {
+  let label: String
+  let size: CGFloat
+
+  var body: some View {
+    RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
+      .fill(Color.primary.opacity(0.1))
+      .overlay(
+        Text(verbatim: String(label.prefix(1)).uppercased())
+          .font(.system(size: size * 0.62, weight: .semibold, design: .rounded))
+          .foregroundStyle(.secondary)
+      )
+      .frame(width: size, height: size)
   }
 }

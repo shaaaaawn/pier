@@ -34,5 +34,4 @@ Pier currently builds as an ad-hoc signed local app. A public release still
 requires:
 
 1. an explicit software license;
-2. a redistribution decision for third-party brand icons;
-3. Developer ID signing and notarization for downloadable builds.
+2. Developer ID signing and notarization for downloadable builds.

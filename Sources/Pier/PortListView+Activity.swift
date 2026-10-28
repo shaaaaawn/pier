@@ -65,10 +65,10 @@ extension PortListView {
     }
   }
 
-  /// Brand mark when one is bundled (Docker's whale), else the SF Symbol.
+  /// The installed engine's icon (Docker Desktop, Simulator), else the SF Symbol.
   @ViewBuilder
   func activityIcon(_ kind: ActivityKind, size: CGFloat) -> some View {
-    if let name = kind.iconName, let image = HarnessIcons.image(named: name) {
+    if let image = AppIcons.image(for: kind.iconApps) {
       Image(nsImage: image)
         .resizable()
         .frame(width: size, height: size)
@@ -311,15 +311,17 @@ extension PortListView {
     } else if group.title.hasPrefix("cmux · ") {
       Image(systemName: "rectangle.split.3x1")
         .font(.system(size: 9))
-    } else if case .terminal = group.rows.first?.entries.first?.attribution {
-      Image(systemName: "terminal")
-        .font(.system(size: 9))
-    } else if let iconName = Attributor.iconName(forHarnessLabel: group.title),
-      let image = HarnessIcons.image(named: iconName)
+    } else if let attribution = group.rows.first?.entries.first?.attribution,
+      let image = AppIcons.image(for: attribution.iconApps)
     {
       Image(nsImage: image)
         .resizable()
         .frame(width: 13, height: 13)
+    } else if case .terminal = group.rows.first?.entries.first?.attribution {
+      Image(systemName: "terminal")
+        .font(.system(size: 9))
+    } else if case .harness = group.rows.first?.entries.first?.attribution {
+      Monogram(label: group.title, size: 13)
     }
   }
 }
