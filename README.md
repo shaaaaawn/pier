@@ -137,11 +137,9 @@ their own remote subresources; see
 Pier is early-stage software built and tested on macOS. There is not yet a
 notarized downloadable release.
 
-The repository is being prepared for public open-source release. Two decisions
-must be completed before publishing:
-
-1. add an explicit software license; and
-2. remove or clear redistribution of the bundled third-party brand icons.
+Pier bundles no third-party logos: agent, terminal and Docker icons are read
+from the apps installed on your Mac, and an agent you don't have an app for
+gets a monogram.
 
 Until a `LICENSE` file is added, the source is **not yet licensed for reuse**.
 

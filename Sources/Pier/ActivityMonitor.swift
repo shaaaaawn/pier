@@ -22,7 +22,7 @@ enum ActivityKind: String {
     }
   }
 
-  /// SF Symbol fallback, used when there's no bundled brand mark.
+  /// SF Symbol fallback, used when no app icon is installed.
   var symbol: String {
     switch self {
     case .docker: return "shippingbox"
@@ -41,13 +41,13 @@ enum ActivityKind: String {
     }
   }
 
-  /// Bundled brand icon basename (Resources/icons/<name>.png), same mechanism
-  /// as the harness marks. Apple's logo ships as an SF Symbol, so only Docker
-  /// needs one.
-  var iconName: String? {
+  /// Bundle IDs whose installed icon stands for the section — Docker
+  /// Desktop's, else OrbStack's; Simulator's own. Apple's logo is an SF Symbol.
+  var iconApps: [String] {
     switch self {
-    case .docker: return "docker"
-    case .apple, .mcp, .simulator: return nil
+    case .docker: return ["com.docker.docker", "dev.kdrag0n.MacVirt"]
+    case .simulator: return ["com.apple.iphonesimulator"]
+    case .apple, .mcp: return []
     }
   }
 }

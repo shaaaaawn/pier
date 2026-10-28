@@ -489,13 +489,11 @@ extension PortListView {
     .help(attribution.badgeLabel)
   }
 
-  /// Brand icon at the leading edge of the badge; cmux-only attributions get
-  /// a subtle SF Symbol, anything without an icon stays text-only.
+  /// The installed app's icon at the leading edge of the badge; without one,
+  /// an agent gets a monogram and cmux / a terminal a subtle SF Symbol.
   @ViewBuilder
   func badgeIcon(_ attribution: Attribution) -> some View {
-    if let iconName = attribution.iconName,
-      let image = HarnessIcons.image(named: iconName)
-    {
+    if let image = AppIcons.image(for: attribution.iconApps) {
       Image(nsImage: image)
         .resizable()
         .frame(width: 12, height: 12)
@@ -505,6 +503,8 @@ extension PortListView {
     } else if case .terminal = attribution {
       Image(systemName: "terminal")
         .font(.system(size: 9))
+    } else if case .harness(let name) = attribution {
+      Monogram(label: name, size: 12)
     }
   }
 

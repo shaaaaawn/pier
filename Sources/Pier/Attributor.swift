@@ -1,12 +1,13 @@
 import Foundation
 
-/// A known agent harness / terminal. `icon` is the basename (no extension) of
-/// a 32px PNG in Sources/Pier/Resources/icons/ — nil means text-only badge.
+/// A known agent harness / terminal. `apps` are the bundle IDs whose icon
+/// stands for it, read from the copy installed on this Mac (`AppIcons`) —
+/// Pier ships no third-party marks. Empty, or none installed: a monogram.
 struct HarnessRule {
   /// Matched against the process name (`ps ucomm`) on a word boundary.
   let token: String
   let label: String
-  let icon: String?
+  var apps: [String] = []
   /// Distinctive fragments safe to look for inside a full **command path**.
   ///
   /// Needed because many harnesses run as `node /path/to/<tool>/cli.js`, where
@@ -19,73 +20,79 @@ struct HarnessRule {
 
 /// Known agent harnesses / terminals, matched as a lowercased prefix against
 /// the process name (`ps ucomm`). Order matters only for prefix overlaps —
-/// keep more specific tokens first. Extend here (and run
-/// scripts/convert-icons.sh when adding an icon).
+/// keep more specific tokens first. Extend here.
 let harnessTable: [HarnessRule] = [
   HarnessRule(
-    token: "claude", label: "Claude Code", icon: "claude-code",
+    token: "claude", label: "Claude Code", apps: ["com.anthropic.claudefordesktop"],
     pathTokens: ["claude-code", "@anthropic-ai/claude"]),
   // Antigravity's CLI installs as `agy` (~/.local/bin/agy) — nothing in the
   // name hints at the product, so without this rule its ports get attributed
   // to whatever launched it (CodexBar shells out to it for usage stats).
-  HarnessRule(token: "agy", label: "Antigravity", icon: "antigravity", pathTokens: ["antigravity"]),
+  HarnessRule(
+    token: "agy", label: "Antigravity", apps: ["com.google.antigravity"],
+    pathTokens: ["antigravity"]),
   // Before "codex": CodexBar is a usage *monitor*, not the Codex CLI, and its
   // children hold ports of their own. Naming it beats lumping it into "Other",
   // and it stays a fallback for children Pier can't identify directly.
-  HarnessRule(token: "codexbar", label: "CodexBar", icon: nil),
-  HarnessRule(token: "codex", label: "Codex", icon: "codex", pathTokens: ["codex-cli"]),
-  HarnessRule(token: "opencode", label: "OpenCode", icon: "opencode", pathTokens: ["opencode"]),
+  HarnessRule(token: "codexbar", label: "CodexBar", apps: ["com.steipete.codexbar"]),
   HarnessRule(
-    token: "kimi", label: "Kimi", icon: "kimi-code", pathTokens: ["kimi-code", "kimi-cli"]),
-  HarnessRule(token: "gemini", label: "Gemini CLI", icon: nil, pathTokens: ["gemini-cli"]),
-  HarnessRule(token: "aider", label: "Aider", icon: "aider", pathTokens: ["aider"]),
-  HarnessRule(token: "cursor", label: "Cursor", icon: "cursor", pathTokens: ["cursor-agent"]),
-  HarnessRule(token: "windsurf", label: "Windsurf", icon: "windsurf", pathTokens: ["windsurf"]),
-  HarnessRule(token: "amp", label: "Amp", icon: "amp"),
-  HarnessRule(token: "copilot", label: "Copilot", icon: "copilot", pathTokens: ["copilot"]),
-  HarnessRule(token: "crush", label: "Crush", icon: "crush"),
-  HarnessRule(token: "goose", label: "Goose", icon: "goose"),
+    token: "codex", label: "Codex", apps: ["com.openai.codex"], pathTokens: ["codex-cli"]),
+  HarnessRule(token: "opencode", label: "OpenCode", pathTokens: ["opencode"]),
+  HarnessRule(
+    token: "kimi", label: "Kimi", pathTokens: ["kimi-code", "kimi-cli"]),
+  HarnessRule(token: "gemini", label: "Gemini CLI", pathTokens: ["gemini-cli"]),
+  HarnessRule(token: "aider", label: "Aider", pathTokens: ["aider"]),
+  HarnessRule(
+    token: "cursor", label: "Cursor", apps: ["com.todesktop.230313mzl4w4u92"],
+    pathTokens: ["cursor-agent"]),
+  HarnessRule(
+    token: "windsurf", label: "Windsurf", apps: ["com.exafunction.windsurf"],
+    pathTokens: ["windsurf"]),
+  HarnessRule(token: "amp", label: "Amp"),
+  HarnessRule(token: "copilot", label: "Copilot", pathTokens: ["copilot"]),
+  HarnessRule(token: "crush", label: "Crush"),
+  HarnessRule(token: "goose", label: "Goose", apps: ["com.block.goose"]),
   // Popular harnesses that mostly run as `node <path>` / `python -m <pkg>`,
   // where only the path names the tool.
-  HarnessRule(token: "cline", label: "Cline", icon: "cline", pathTokens: ["cline"]),
+  HarnessRule(token: "cline", label: "Cline", pathTokens: ["cline"]),
   HarnessRule(
-    token: "kilo", label: "Kilo Code", icon: "kilo", pathTokens: ["kilo-code", "kilocode"]),
-  HarnessRule(token: "roo", label: "Roo Code", icon: "roo", pathTokens: ["roo-code", "roocode"]),
-  HarnessRule(token: "kiro", label: "Kiro", icon: "kiro", pathTokens: ["kiro"]),
-  HarnessRule(token: "junie", label: "Junie", icon: "junie", pathTokens: ["junie"]),
-  HarnessRule(token: "jules", label: "Jules", icon: "jules"),
+    token: "kilo", label: "Kilo Code", pathTokens: ["kilo-code", "kilocode"]),
+  HarnessRule(token: "roo", label: "Roo Code", pathTokens: ["roo-code", "roocode"]),
+  HarnessRule(token: "kiro", label: "Kiro", apps: ["dev.kiro.desktop"], pathTokens: ["kiro"]),
+  HarnessRule(token: "junie", label: "Junie", pathTokens: ["junie"]),
+  HarnessRule(token: "jules", label: "Jules"),
   HarnessRule(
-    token: "droid", label: "Factory Droid", icon: "factory-droid", pathTokens: ["factory-droid"]),
-  HarnessRule(token: "qwen", label: "Qwen Code", icon: "qwen-code", pathTokens: ["qwen-code"]),
-  HarnessRule(token: "qoder", label: "Qoder", icon: "qoder", pathTokens: ["qoder"]),
-  HarnessRule(token: "refact", label: "Refact.ai", icon: "refact-ai", pathTokens: ["refact"]),
-  HarnessRule(token: "comate", label: "Baidu Comate", icon: "baidu-comate", pathTokens: ["comate"]),
-  HarnessRule(token: "codebuddy", label: "CodeBuddy", icon: "codebuddy", pathTokens: ["codebuddy"]),
-  HarnessRule(token: "openhands", label: "OpenHands", icon: "openhands", pathTokens: ["openhands"]),
-  HarnessRule(token: "devin", label: "Devin", icon: "devin", pathTokens: ["devin"]),
+    token: "droid", label: "Factory Droid", pathTokens: ["factory-droid"]),
+  HarnessRule(token: "qwen", label: "Qwen Code", pathTokens: ["qwen-code"]),
+  HarnessRule(token: "qoder", label: "Qoder", pathTokens: ["qoder"]),
+  HarnessRule(token: "refact", label: "Refact.ai", pathTokens: ["refact"]),
+  HarnessRule(token: "comate", label: "Baidu Comate", pathTokens: ["comate"]),
+  HarnessRule(token: "codebuddy", label: "CodeBuddy", pathTokens: ["codebuddy"]),
+  HarnessRule(token: "openhands", label: "OpenHands", pathTokens: ["openhands"]),
+  HarnessRule(token: "devin", label: "Devin", pathTokens: ["devin"]),
   HarnessRule(
-    token: "augment", label: "Augment Code", icon: "augment-code", pathTokens: ["augment-code"]),
+    token: "augment", label: "Augment Code", pathTokens: ["augment-code"]),
   HarnessRule(
-    token: "mistral", label: "Mistral Vibe", icon: "mistral-vibe", pathTokens: ["mistral-vibe"]),
-  HarnessRule(token: "trae", label: "Trae", icon: "trae", pathTokens: ["trae-agent"]),
-  HarnessRule(token: "zencoder", label: "Zencoder", icon: "zencoder", pathTokens: ["zencoder"]),
-  HarnessRule(token: "sweep", label: "Sweep", icon: "sweep"),
+    token: "mistral", label: "Mistral Vibe", pathTokens: ["mistral-vibe"]),
+  HarnessRule(token: "trae", label: "Trae", pathTokens: ["trae-agent"]),
+  HarnessRule(token: "zencoder", label: "Zencoder", pathTokens: ["zencoder"]),
+  HarnessRule(token: "sweep", label: "Sweep"),
   HarnessRule(
-    token: "replit", label: "Replit Agent", icon: "replit-agent", pathTokens: ["replit-agent"]),
-  HarnessRule(token: "coco", label: "Snowflake Coco", icon: "snowflake-coco"),
-  HarnessRule(token: "mimo", label: "MiMo Code", icon: "mimo-code", pathTokens: ["mimo-code"]),
-  HarnessRule(token: "genie", label: "Cosine Genie", icon: "cosine-genie"),
+    token: "replit", label: "Replit Agent", pathTokens: ["replit-agent"]),
+  HarnessRule(token: "coco", label: "Snowflake Coco"),
+  HarnessRule(token: "mimo", label: "MiMo Code", pathTokens: ["mimo-code"]),
+  HarnessRule(token: "genie", label: "Cosine Genie"),
   // `pi` is name-only on purpose: as a path fragment it would match
   // `~/code/pi-workflow`, `site-packages/pip`, and similar.
-  HarnessRule(token: "pi", label: "Pi", icon: "pi"),
-  HarnessRule(token: "warp", label: "Warp", icon: "warp"),
-  HarnessRule(token: "zed", label: "Zed", icon: "zed"),
-  HarnessRule(token: "code", label: "VS Code", icon: nil),
-  HarnessRule(token: "ghostty", label: "Ghostty", icon: nil),
-  HarnessRule(token: "iterm2", label: "iTerm", icon: nil),
-  HarnessRule(token: "terminal", label: "Terminal", icon: nil),
-  HarnessRule(token: "tmux", label: "tmux", icon: nil),
-  HarnessRule(token: "zellij", label: "Zellij", icon: nil),
+  HarnessRule(token: "pi", label: "Pi"),
+  HarnessRule(token: "warp", label: "Warp", apps: ["dev.warp.Warp-Stable"]),
+  HarnessRule(token: "zed", label: "Zed", apps: ["dev.zed.Zed"]),
+  HarnessRule(token: "code", label: "VS Code", apps: ["com.microsoft.VSCode"]),
+  HarnessRule(token: "ghostty", label: "Ghostty", apps: ["com.mitchellh.ghostty"]),
+  HarnessRule(token: "iterm2", label: "iTerm", apps: ["com.googlecode.iterm2"]),
+  HarnessRule(token: "terminal", label: "Terminal", apps: ["com.apple.Terminal"]),
+  HarnessRule(token: "tmux", label: "tmux"),
+  HarnessRule(token: "zellij", label: "Zellij"),
 ]
 
 enum Attributor {
@@ -111,9 +118,9 @@ enum Attributor {
     return !next.isLetter && !next.isNumber
   }
 
-  /// Icon resource basename for a harness label, if one is bundled.
-  static func iconName(forHarnessLabel label: String) -> String? {
-    harnessTable.first { $0.label == label }?.icon
+  /// Bundle IDs of the apps whose icon stands for a harness label.
+  static func iconApps(forHarnessLabel label: String) -> [String] {
+    harnessTable.first { $0.label == label }?.apps ?? []
   }
 
   /// Identify a harness from a full command line — the case `ucomm` can't see,

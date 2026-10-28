@@ -11,6 +11,11 @@ import UserNotifications
 @MainActor
 enum DebugFlags {
   static func handleIfPresent(_ args: [String]) {
+    // Renders must not depend on which apps this Mac has: agents get the
+    // monogram everywhere, engines their SF Symbol.
+    if args.contains(where: { $0.hasPrefix("--render-fixture") }) {
+      AppIcons.lookupEnabled = false
+    }
     if args.contains("--print-memory") {
       MemoryProbe.printMemory()
       exit(0)

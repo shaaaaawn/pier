@@ -18,7 +18,7 @@ final class HarnessMatchTests: XCTestCase {
   /// process actually is — and the process is the more specific truth.
   func testAntigravityCLIIsNamedByItsOwnBinary() {
     XCTAssertEqual(Attributor.harnessLabel(for: "agy"), "Antigravity")
-    XCTAssertEqual(Attributor.iconName(forHarnessLabel: "Antigravity"), "antigravity")
+    XCTAssertEqual(Attributor.iconApps(forHarnessLabel: "Antigravity"), ["com.google.antigravity"])
 
     // Chain: agy (self) <- CodexBar (launcher). Self wins.
     let table = ProcessTable.parse("69986 2161 agy\n2161 1 CodexBar")

@@ -2,46 +2,52 @@ import XCTest
 
 @testable import Pier
 
-/// Every icon referenced by the harness table must exist as a 32px PNG in
-/// Sources/Pier/Resources/icons/ (run scripts/convert-icons.sh after adding
-/// a new harness icon).
+/// Icons come from the apps installed on the Mac, by bundle ID; Pier bundles
+/// no third-party marks.
 final class IconResourceTests: XCTestCase {
-  private var iconsDir: URL {
+  func testNoThirdPartyIconsAreBundled() {
     // #filePath = <package>/Tests/PierTests/IconResourceTests.swift
-    URL(fileURLWithPath: #filePath)
+    let resources = URL(fileURLWithPath: #filePath)
       .deletingLastPathComponent()  // PierTests
       .deletingLastPathComponent()  // Tests
       .deletingLastPathComponent()  // <package>
-      .appendingPathComponent("Sources/Pier/Resources/icons")
-  }
-
-  func testEveryHarnessIconExists() {
-    let referenced = harnessTable.compactMap(\.icon)
-    XCTAssertFalse(referenced.isEmpty, "harness table should reference at least one icon")
-    for name in referenced {
-      let path = iconsDir.appendingPathComponent("\(name).png").path
-      XCTAssertTrue(
-        FileManager.default.fileExists(atPath: path),
-        "missing icon resource: Sources/Pier/Resources/icons/\(name).png"
-      )
-    }
-  }
-
-  func testIconNamesRoundTripThroughLabels() {
-    for rule in harnessTable where rule.icon != nil {
-      XCTAssertEqual(Attributor.iconName(forHarnessLabel: rule.label), rule.icon)
-    }
-  }
-
-  func testAttributionExposesIconName() {
-    XCTAssertEqual(Attribution.harness("Kimi").iconName, "kimi-code")
+      .appendingPathComponent("Sources/Pier/Resources")
+    let files = (try? FileManager.default.contentsOfDirectory(atPath: resources.path)) ?? []
     XCTAssertEqual(
-      Attribution.cmux(workspace: "W", surface: "S", harness: "Claude Code").iconName,
-      "claude-code"
-    )
-    XCTAssertNil(Attribution.cmux(workspace: "W", surface: "S", harness: nil).iconName)
-    XCTAssertNil(Attribution.harness("tmux").iconName)
-    XCTAssertNil(Attribution.system.iconName)
-    XCTAssertNil(Attribution.none.iconName)
+      Set(files.filter { !$0.hasPrefix(".") }),
+      ["menubar-icon.png", "menubar-icon@2x.png", "menubar-icon@3x.png"],
+      "Resources holds Pier's own icon only")
+  }
+
+  func testBundleIDsLookLikeBundleIDs() {
+    for rule in harnessTable {
+      for id in rule.apps {
+        XCTAssertGreaterThanOrEqual(id.split(separator: ".").count, 2, "\(rule.label): \(id)")
+        XCTAssertFalse(id.contains(" "), "\(rule.label): \(id)")
+      }
+    }
+  }
+
+  func testAttributionExposesIconApps() {
+    XCTAssertEqual(Attribution.harness("Codex").iconApps, ["com.openai.codex"])
+    XCTAssertEqual(
+      Attribution.cmux(workspace: "W", surface: "S", harness: "Claude Code").iconApps,
+      ["com.anthropic.claudefordesktop"])
+    XCTAssertEqual(
+      Attribution.terminal(TerminalSession(app: .ghostty, directory: "~", tty: "ttys001")).iconApps,
+      ["com.mitchellh.ghostty"])
+    XCTAssertEqual(Attribution.harness("Aider").iconApps, [])
+    XCTAssertEqual(Attribution.cmux(workspace: "W", surface: "S", harness: nil).iconApps, [])
+    XCTAssertEqual(Attribution.system.iconApps, [])
+    XCTAssertEqual(Attribution.none.iconApps, [])
+  }
+
+  @MainActor
+  func testLookupMissesAndDisabledLookupsReturnNil() {
+    XCTAssertNil(AppIcons.image(for: ["invalid.pier.no-such-app"]))
+    XCTAssertNil(AppIcons.image(for: []))
+    AppIcons.lookupEnabled = false
+    defer { AppIcons.lookupEnabled = true }
+    XCTAssertNil(AppIcons.image(for: ["com.apple.Terminal"]))
   }
 }

@@ -116,9 +116,6 @@ Orchestration and UI:
   if it's in `Contents/Resources/`) and `assets/Pier.icns`, ad-hoc signs.
 - `scripts/render-icons.sh` — `assets/icon.svg` → PNG/icns; backend auto-detected
   (rsvg-convert → Chrome headless → Playwright → qlmanage).
-- `scripts/convert-icons.sh` — brand icons → 32px PNGs. Sources are **not** in
-  the repo; set `PIER_ICON_SRC`. The PNGs are checked in, so building never needs
-  this.
 - `Tests/PierTests` — headless tests over pure functions and captured output. No
   UI tests; fixture renders and live probes cover that ground instead.
 

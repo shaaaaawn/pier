@@ -132,8 +132,10 @@ Source artwork:
 Normal builds use committed render outputs. Maintainers can regenerate them with
 `scripts/render-icons.sh`; see [Configuration](configuration.md#icon-rendering).
 
-The harness and vendor icons under `Sources/Pier/Resources/icons/` are
-third-party marks. Do not treat their presence as redistribution permission.
+Harness, terminal and engine icons are not bundled. `AppIcons` reads them from
+the installed apps named by bundle ID in `harnessTable` (`Attributor.swift`);
+an agent with no installed app gets a monogram. Fixture renders turn the lookup
+off so they don't depend on the machine.
 
 ## Continuous integration
 
