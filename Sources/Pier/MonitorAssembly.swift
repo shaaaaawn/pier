@@ -72,6 +72,10 @@ enum MonitorAssembly {
     }
     for (i, server) in DevServers.disambiguate(dev).enumerated() {
       entries[i].dev = server
+      if server != nil {
+        entries[i].detached = DevServers.isDetached(
+          chain: table.chain(from: entries[i].pid), attribution: entries[i].attribution)
+      }
     }
     return AssembledPorts(entries: entries, table: table, commands: commands)
   }

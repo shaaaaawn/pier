@@ -131,6 +131,8 @@ struct PortEntry: Identifiable, Equatable {
   var startTime: UInt64?
   /// Set when this port is a dev server you're running (see `DevServers`).
   var dev: DevServer?
+  /// A dev server whose starting session is gone (see `DevServers.isDetached`).
+  var detached = false
 
   var id: String { "\(pid):\(port):\(proto.rawValue)" }
   var bindSummary: String { bindAddresses.joined(separator: ", ") }

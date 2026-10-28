@@ -38,6 +38,24 @@ The process itself wins before its launcher. This prevents a helper launched by
 an agent from being mislabeled as the launcher when Pier recognizes the helper.
 System services are separated from user development work.
 
+## Reading a row
+
+Each listening port is two lines. The first says what it is — "Angular ·
+storefront", "Wrangler", "node" — plus tags that only appear when they mean
+something:
+
+- **×N** — one process holding several ports (click to expand).
+- **LAN** — bound to every interface (`0.0.0.0`, `*`, `::`), so other devices on
+  the network can reach it unless the firewall blocks it. Right-click → *Copy LAN
+  URL*. Hover for the exact addresses.
+- **detached** — a dev server whose agent, terminal or shell has exited, but
+  which is still listening. A banner at the top offers **Stop All…**, which lists
+  every server it will stop and checks each is still the same process first.
+
+The second line is quiet detail: the agent or terminal that started it (only
+where the section header doesn't already say so), how long it has been up, and
+its pid.
+
 ## Search, scopes, and sorting
 
 Search matches ports, process names, harnesses, and workspaces. Scope chips

@@ -195,9 +195,12 @@ enum DebugFlags {
       print("  \(group.title)")
       for row in group.rows {
         let e = row.primary
+        var flags = [e.age(now: Date()) ?? "-"]
+        if e.isOnLAN { flags.append("LAN") }
+        if e.detached { flags.append("DETACHED") }
         print(
           "      \(e.port) \(e.dev?.framework ?? "?") — \(e.processName) · \(e.attribution.badgeLabel)"
-        )
+            + "  [\(flags.joined(separator: " "))]")
       }
     }
     print("cmux: \(monitor.cmuxStatus)")

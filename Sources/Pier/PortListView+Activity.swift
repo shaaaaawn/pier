@@ -250,7 +250,10 @@ extension PortListView {
   }
 
   func groupHeader(_ group: PortGroup) -> some View {
-    sectionHeader(id: group.id, count: group.entryCount, title: group.title) {
+    // A "1" on every single-server header is noise; counts start at two.
+    sectionHeader(
+      id: group.id, count: group.entryCount > 1 ? group.entryCount : nil, title: group.title
+    ) {
       groupHeaderIcon(group)
     }
   }

@@ -184,6 +184,56 @@ extension PortListView {
     }
   }
 
+  /// Dev servers that outlived the session that started them — the stray
+  /// servers agents leave behind. One line, one action, only when there are
+  /// some, and only in scopes that list ports.
+  @ViewBuilder
+  var detachedBanner: some View {
+    let detached = monitor.entries.filter(\.detached)
+    if !detached.isEmpty, filter.showsPorts {
+      let servers = Set(detached.map(\.pid)).count
+      HStack(spacing: 6) {
+        Image(systemName: "exclamationmark.circle")
+          .symbolRenderingMode(.hierarchical)
+          .font(.system(size: 10))
+        ViewThatFits(in: .horizontal) {
+          Text(
+            servers == 1
+              ? "A dev server outlived the session that started it"
+              : "\(servers) dev servers outlived the session that started them")
+          Text(servers == 1 ? "1 detached dev server" : "\(servers) detached dev servers")
+        }
+        .font(.system(size: 10.5))
+        .lineLimit(1)
+        Spacer(minLength: 4)
+        Button("Stop All…") { pending = .stopDetached(detached) }
+          .buttonStyle(.borderless)
+          .font(.system(size: 10.5, weight: .semibold))
+      }
+      .foregroundStyle(Self.detachedTint)
+      .padding(.horizontal, 9)
+      .padding(.vertical, 5)
+      .background(Self.detachedTint.opacity(0.10), in: RoundedRectangle(cornerRadius: 7))
+      .overlay(
+        RoundedRectangle(cornerRadius: 7)
+          .strokeBorder(Self.detachedTint.opacity(0.25), lineWidth: 0.5)
+      )
+      .padding(.horizontal, 12)
+      .padding(.bottom, 8)
+      .help("Their agent or terminal has exited, but they're still listening.")
+    }
+  }
+
+  /// One line per server, for the Stop All confirmation: what will be stopped,
+  /// exactly.
+  static func detachedSummary(_ entries: [PortEntry]) -> String {
+    let lines = entries.sorted { $0.port < $1.port }.map { entry in
+      ":\(entry.port)  \(entry.dev?.label ?? entry.processName)  (pid \(entry.pid))"
+    }
+    return "Sends SIGTERM to each, after checking it's still the same process:\n\n"
+      + lines.joined(separator: "\n")
+  }
+
   /// Apple `container` equivalents. Deliberately different from Docker's menu:
   /// there's no aggregate prune and no restart command, so each resource type
   /// is pruned on its own and no fake restart is offered.

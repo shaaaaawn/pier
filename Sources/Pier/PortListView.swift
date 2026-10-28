@@ -79,6 +79,7 @@ struct PortListView: View {
         searchField
         filterBar
         cmuxBanner
+        detachedBanner
         Divider().opacity(0.5)
         content
       }
@@ -154,6 +155,17 @@ struct PortListView: View {
               + "and their data stay."),
           primaryButton: .destructive(Text("Shut Down All")) {
             monitor.shutDownAllSimulators()
+          },
+          secondaryButton: .cancel()
+        )
+      case .stopDetached(let entries):
+        return Alert(
+          title: Text(
+            entries.count == 1
+              ? "Stop the detached dev server?" : "Stop \(entries.count) detached dev servers?"),
+          message: Text(Self.detachedSummary(entries)),
+          primaryButton: .destructive(Text("Stop All")) {
+            monitor.stopDetached(entries)
           },
           secondaryButton: .cancel()
         )
@@ -320,6 +332,7 @@ enum PendingConfirmation: Identifiable {
   case docker(DockerAction, reclaimable: String?)
   case apple(AppleAction, reclaimable: String?)
   case shutDownSimulators(count: Int)
+  case stopDetached([PortEntry])
 
   var id: String {
     switch self {
@@ -329,6 +342,7 @@ enum PendingConfirmation: Identifiable {
     case .docker(let action, _): return "docker-\(action.rawValue)"
     case .apple(let action, _): return "apple-\(action.rawValue)"
     case .shutDownSimulators: return "simulators-shutdown-all"
+    case .stopDetached: return "stop-detached"
     }
   }
 }
