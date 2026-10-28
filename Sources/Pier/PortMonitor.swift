@@ -140,6 +140,8 @@ final class PortMonitor: ObservableObject {
   /// what makes a cold start silent.
   /// Internal, not private: the differ lives in +Events.
   var lastSnapshot: MonitorSnapshot?
+  /// The hidden-port set the last snapshot was taken under (see `recordEvents`).
+  var lastHidden: Set<Int>?
   /// Actions Pier itself just took, so the resulting event reads "you" rather
   /// than showing up as an unattributed kill ~5s later.
   var expectations: [(key: String, action: PierEvent.Action, expires: Date)] = []
@@ -271,7 +273,7 @@ final class PortMonitor: ObservableObject {
         self.appleState = activitySnapshot.appleState
         self.history.record(readings)
         let now = Date()
-        self.recordEvents(ports: entries, activity: activity, now: now)
+        self.recordEvents(ports: entries, activity: activity, hidden: hidden, now: now)
         self.lastRefresh = now
         self.isRefreshing = false
       }
