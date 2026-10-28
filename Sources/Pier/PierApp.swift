@@ -138,6 +138,16 @@ final class MenuBarController: NSObject {
       button.action = #selector(togglePanel)
       button.toolTip = "Pier — listening ports"
     }
+
+    // The global shortcut opens the panel from anywhere — including when a
+    // crowded menu bar or the notch hides the icon.
+    HotKeyCenter.shared.onPress = { [weak self] in self?.togglePanel() }
+    HotKeyCenter.shared.register(KeyCombo.saved())
+    NotificationCenter.default.addObserver(
+      forName: .pierOpenSettings, object: nil, queue: .main
+    ) { [weak self] _ in
+      MainActor.assumeIsolated { self?.openSettings() }
+    }
     // Without this macOS keys the item's saved position and visibility by
     // launch-order index, which moves between runs — see StatusItemRepair.
     statusItem.autosaveName = StatusItemRepair.autosaveName
@@ -321,6 +331,14 @@ final class MenuBarController: NSObject {
 
   // MARK: - Show / hide
 
+  /// Settings replaces the panel rather than sitting beside it: the panel's
+  /// dismiss monitor only sees clicks in *other* apps, so clicks in our own
+  /// Settings window would leave the two overlapping.
+  func openSettings() {
+    closePanel()
+    SettingsWindow.shared.show { [weak self] in self?.monitor.refresh() }
+  }
+
   @objc private func togglePanel() {
     panel.isVisible ? closePanel() : showPanel()
   }
@@ -381,7 +399,15 @@ final class MenuBarController: NSObject {
       self.closePanel()
     }
     keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
-      guard let self, self.panel.isVisible, event.keyCode == 53 else { return event }
+      guard let self, self.panel.isVisible else { return event }
+      // ⌘, — the standard Settings shortcut.
+      if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+        event.charactersIgnoringModifiers == ","
+      {
+        self.openSettings()
+        return nil
+      }
+      guard event.keyCode == 53 else { return event }
       self.closePanel()
       return nil  // swallow the Escape
     }

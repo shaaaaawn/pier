@@ -227,7 +227,11 @@ final class PortMonitor: ObservableObject {
       // Stamp each row with its process's start time (libproc, ~1 µs per pid)
       // so a kill from a stale row can tell a recycled pid apart.
       var starts: [Int32: UInt64] = [:]
-      let entries = assembled.entries.map { entry -> PortEntry in
+      // Hidden ports are dropped here, once, so the list, counts, search,
+      // event feed and menu bar tooltip all agree they aren't there.
+      let hidden = HiddenPorts.current()
+      let entries = assembled.entries.filter { !hidden.contains($0.port) }.map {
+        entry -> PortEntry in
         var entry = entry
         if starts[entry.pid] == nil { starts[entry.pid] = Self.startTime(of: entry.pid) }
         entry.startTime = starts[entry.pid]

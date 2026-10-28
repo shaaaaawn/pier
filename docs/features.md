@@ -129,6 +129,18 @@ Available log behavior depends on the source:
 Log drawers keep a bounded in-memory line history and are never persisted by
 Pier.
 
+## Settings
+
+Open Settings with the gear in the panel header or ⌘, while the panel is open:
+
+- **Open Pier at login** — via macOS's login items; the toggle shows macOS's own
+  status, including "waiting for approval".
+- **Keyboard shortcut** — opens the panel from any app, even when a crowded menu
+  bar or the notch hides the icon. Default ⌃⌥P; record another or clear it. If
+  another app already owns the combination, Settings says so.
+- **Hidden ports** — right-click a port → Hide, or add ports in Settings. Hidden
+  ports keep running; Pier leaves them out of the list, counts and event feed.
+
 ## System glance
 
 The footer shows, left to right:
