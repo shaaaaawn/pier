@@ -117,7 +117,7 @@ struct SettingsView: View {
           } else {
             PortTags(ports: watched.sorted(), help: "Stop watching") { port in
               watched.remove(port)
-              saveWatched()
+              saveWatched(removing: [port])
             }
           }
         }
@@ -215,8 +215,11 @@ struct SettingsView: View {
     if fixture == nil { Notifier.shared.requestPermission { permission = $0 } }
   }
 
-  private func saveWatched() {
+  /// Merges with what's stored: a right-click watch made while this window
+  /// is open isn't in `watched`, and writing the stale set back would drop it.
+  private func saveWatched(removing: Set<Int> = []) {
     guard fixture == nil else { return }
+    watched = WatchedPorts.current().union(watched).subtracting(removing)
     WatchedPorts.set(watched)
   }
 
