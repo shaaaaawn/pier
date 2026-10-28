@@ -1,6 +1,6 @@
 # Pier — build/test/run front door.
 .DEFAULT_GOAL := help
-.PHONY: help build test run fixture anchor logs cmux docker apple activity menubar viewport statusitem selfevent applog applog-follow fmt lint check clean
+.PHONY: help build test run fixture anchor logs cmux docker apple activity menubar viewport statusitem selfevent applog applog-follow fmt lint check clean site site-stage
 
 help: ## show this list
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -96,3 +96,13 @@ check: lint test ## the gate: style + the full suite
 
 clean: ## remove SPM build products
 	rm -rf .build dist/Pier.app
+
+site-stage: ## assemble _site/ (the Pages artifact): site/ + the markdown in docs/
+	rm -rf _site && mkdir -p _site/docs
+	cp -R site/. _site/
+	cp docs/*.md _site/docs/
+	cp -R docs/images _site/docs/images
+	touch _site/.nojekyll
+
+site: site-stage ## preview the docs site at http://localhost:8000
+	cd _site && python3 -m http.server 8000
