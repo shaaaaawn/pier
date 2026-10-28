@@ -141,10 +141,12 @@ Pier bundles no third-party logos: agent, terminal and Docker icons are read
 from the apps installed on your Mac, and an agent you don't have an app for
 gets a monogram.
 
-Until a `LICENSE` file is added, the source is **not yet licensed for reuse**.
-
 ## Acknowledgements
 
 Pier's status-item resilience and verification practices were informed by
 [CodexBar](https://github.com/steipete/CodexBar). The app's pier glyph and
 full-color icon live in [`assets/`](assets/).
+
+## License
+
+Pier is released under the [MIT License](LICENSE).

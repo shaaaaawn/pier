@@ -30,8 +30,6 @@ them.
 
 ## Release readiness
 
-Pier currently builds as an ad-hoc signed local app. A public release still
-requires:
-
-1. an explicit software license;
-2. Developer ID signing and notarization for downloadable builds.
+Pier is MIT-licensed (see `LICENSE`) and currently builds as an ad-hoc signed
+local app. A downloadable release still needs Developer ID signing and
+notarization.
