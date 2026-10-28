@@ -33,6 +33,24 @@ function loadMarked() {
   });
 }
 
+const esc = (t) =>
+  String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+// marked passes raw HTML straight through. Release notes come from an API and
+// innerHTML runs whatever it's given, so show raw HTML as text and drop any
+// link/image URL that isn't http(s), mailto or a fragment.
+function render(marked, md) {
+  const html = marked.parse(md, { renderer: Object.assign(new marked.Renderer(), { html: (h) => esc(h.text ?? h) }) });
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll("[href],[src]").forEach((n) => {
+    for (const attr of ["href", "src"]) {
+      const v = n.getAttribute(attr);
+      if (v !== null && /^\s*[a-z][a-z0-9+.-]*:/i.test(v) && !/^\s*(https?|mailto):/i.test(v)) n.removeAttribute(attr);
+    }
+  });
+  return doc.body.innerHTML;
+}
+
 // ---- Release card (index) ------------------------------------------------
 async function showRelease() {
   const el = document.getElementById("latest");
@@ -43,13 +61,13 @@ async function showRelease() {
     const r = await res.json();
     const marked = await loadMarked();
     const assets = (r.assets || [])
-      .map((a) => `<a class="btn solid" href="${a.browser_download_url}">Download ${a.name}</a>`)
+      .map((a) => `<a class="btn solid" href="${esc(a.browser_download_url)}">Download ${esc(a.name)}</a>`)
       .join("");
-    el.innerHTML = `<span class="tag">Latest · ${r.tag_name}</span>
-      <h3>${r.name || r.tag_name}</h3>
+    el.innerHTML = `<span class="tag">Latest · ${esc(r.tag_name)}</span>
+      <h3>${esc(r.name || r.tag_name)}</h3>
       <p class="muted">${new Date(r.published_at).toLocaleDateString(undefined, { dateStyle: "long" })}</p>
-      <div class="notes">${marked.parse(r.body || "")}</div>
-      <p>${assets}<a href="${r.html_url}">Release page →</a></p>`;
+      <div class="notes">${render(marked, r.body || "")}</div>
+      <p>${assets}<a href="${esc(r.html_url)}">Release page →</a></p>`;
   } catch (_) {
     el.innerHTML = `<span class="tag">Source build</span>
       <h3>No downloadable release yet</h3>
@@ -85,7 +103,7 @@ async function showDoc() {
   try {
     const [marked, res] = await Promise.all([loadMarked(), fetch(`docs/${page}.md`)]);
     if (!res.ok) throw new Error(res.status);
-    body.innerHTML = marked.parse(await res.text());
+    body.innerHTML = render(marked, await res.text());
     const known = new Set(PAGES.flatMap(([, i]) => i.map(([id]) => id)));
     body.querySelectorAll("a[href]").forEach((a) => {
       const h = a.getAttribute("href");
