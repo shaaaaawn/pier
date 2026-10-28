@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 @testable import Pier
@@ -5,18 +6,25 @@ import XCTest
 /// Icons come from the apps installed on the Mac, by bundle ID; Pier bundles
 /// no third-party marks.
 final class IconResourceTests: XCTestCase {
-  func testNoThirdPartyIconsAreBundled() {
+  /// Nothing is bundled at all: the menu bar glyph is drawn in code
+  /// (`PierGlyph`), and agent icons come from the installed apps.
+  func testNoResourcesAreBundled() {
     // #filePath = <package>/Tests/PierTests/IconResourceTests.swift
     let resources = URL(fileURLWithPath: #filePath)
       .deletingLastPathComponent()  // PierTests
       .deletingLastPathComponent()  // Tests
       .deletingLastPathComponent()  // <package>
       .appendingPathComponent("Sources/Pier/Resources")
-    let files = (try? FileManager.default.contentsOfDirectory(atPath: resources.path)) ?? []
-    XCTAssertEqual(
-      Set(files.filter { !$0.hasPrefix(".") }),
-      ["menubar-icon.png", "menubar-icon@2x.png", "menubar-icon@3x.png"],
-      "Resources holds Pier's own icon only")
+    XCTAssertFalse(
+      FileManager.default.fileExists(atPath: resources.path),
+      "Sources/Pier/Resources is back — Pier bundles no images")
+  }
+
+  func testGlyphIsATemplateAtTheRequestedSize() {
+    let glyph = PierGlyph.image()
+    XCTAssertTrue(glyph.isTemplate)
+    XCTAssertEqual(glyph.size, NSSize(width: 16, height: 16))
+    XCTAssertEqual(PierGlyph.image(size: 32).size, NSSize(width: 32, height: 32))
   }
 
   func testBundleIDsLookLikeBundleIDs() {

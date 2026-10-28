@@ -1,7 +1,7 @@
 #!/bin/bash
-# Render Pier's SVG icons to PNG/icns.
-#   assets/icon.svg      -> Sources/Pier/Resources/menubar-icon{,@2x,@3x}.png (18/36/54)
+# Render Pier's app icon to PNG/icns.
 #   assets/app-icon.svg  -> assets/Pier.iconset/* -> assets/Pier.icns
+# (The menu bar glyph is drawn in code: Sources/Pier/PierGlyph.swift.)
 #
 # Backends, in preference order: rsvg-convert, Chrome headless,
 # Playwright (set PIER_PLAYWRIGHT_NODE_MODULES), qlmanage. Nothing is installed.
@@ -70,13 +70,6 @@ render() {
       ;;
   esac
 }
-
-# --- Menu bar template (monochrome, alpha defines shape) ---
-mkdir -p Sources/Pier/Resources
-render assets/icon.svg 18 Sources/Pier/Resources/menubar-icon.png
-render assets/icon.svg 36 Sources/Pier/Resources/menubar-icon@2x.png
-render assets/icon.svg 54 Sources/Pier/Resources/menubar-icon@3x.png
-echo "==> Wrote Sources/Pier/Resources/menubar-icon{,@2x,@3x}.png"
 
 # --- App icon (.iconset -> .icns) ---
 ICONSET=assets/Pier.iconset

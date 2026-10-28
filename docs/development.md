@@ -126,10 +126,11 @@ The app is not currently Developer ID signed or notarized.
 
 Source artwork:
 
-- `assets/icon.svg` — monochrome menu bar template;
-- `assets/app-icon.svg` — full-color app icon.
+- `assets/app-icon.svg` — the app icon: a pier at twilight, its lamps lit.
+- `Sources/Pier/PierGlyph.swift` — the menu bar and panel-header glyph, drawn
+  as vector paths in code (a template image, so AppKit tints it).
 
-Normal builds use committed render outputs. Maintainers can regenerate them with
+Normal builds use the committed `assets/Pier.icns`. Maintainers can regenerate them with
 `scripts/render-icons.sh`; see [Configuration](configuration.md#icon-rendering).
 
 Harness, terminal and engine icons are not bundled. `AppIcons` reads them from
