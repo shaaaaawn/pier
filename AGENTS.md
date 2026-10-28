@@ -45,6 +45,7 @@ found:
 | `--render-fixture-simulators <dir>` | the Simulators section at 340 and 440 pt, no device needed |
 | `--render-fixture-terminals <dir>` | Ghostty / Terminal tab groups at 340 and 440 pt |
 | `--render-fixture-dev <dir>` | dev servers among their noise, All and Dev scopes, 340 and 440 pt |
+| `--render-fixture-settings <dir>` | the Settings window in light and dark mode |
 | `--render-fixture-statusitem <dir>` | the menu bar item in light and dark mode, each pressure level |
 | `--appearance light\|dark` | add to any `--render-fixture*`; renders are pinned to dark otherwise |
 | `--print-docker` / `--print-apple` | engine state + reclaimable space (read-only, never prunes) |

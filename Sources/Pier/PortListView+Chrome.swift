@@ -75,6 +75,15 @@ extension PortListView {
       .buttonStyle(.borderless)
       .foregroundStyle(.secondary)
       .help("Refresh now")
+      Button {
+        NotificationCenter.default.post(name: .pierOpenSettings, object: nil)
+      } label: {
+        Image(systemName: "gearshape")
+          .font(.system(size: 11))
+      }
+      .buttonStyle(.borderless)
+      .foregroundStyle(.secondary)
+      .help("Settings (⌘,)")
     }
     .padding(.horizontal, 14)
     .padding(.top, 9)

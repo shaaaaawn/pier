@@ -26,7 +26,14 @@ extension PortMonitor {
   }
 
   /// Diff this refresh against the last and record what changed.
-  func recordEvents(ports: [PortEntry], activity: [ActivityEntry], now: Date) {
+  func recordEvents(
+    ports: [PortEntry], activity: [ActivityEntry], hidden: Set<Int> = [], now: Date
+  ) {
+    // Hiding or unhiding a port makes it vanish from / appear in `ports`
+    // without anything starting or stopping. Diffing across that change would
+    // announce a phantom "stopped"/"started" — so rebase like a cold start.
+    if let lastHidden, lastHidden != hidden { lastSnapshot = nil }
+    lastHidden = hidden
     let snapshot = MonitorSnapshot(ports: ports, activity: activity)
     defer { lastSnapshot = snapshot }
     guard !isFixture else { return }

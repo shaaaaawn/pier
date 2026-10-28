@@ -71,6 +71,7 @@ extension PortListView {
       if hovering { loadTooltip(entry) }
     }
     .help(tooltips[entry.id] ?? "")
+    .contextMenu { portContextMenu(entry) }
   }
 
   /// Anywhere on a row toggles its preview. UDP (and anything without a
@@ -158,6 +159,7 @@ extension PortListView {
     }
     .contentShape(Rectangle())
     .onTapGesture { toggleCluster(row) }
+    .contextMenu { portContextMenu(row.primary) }
     .onHover { hovering in hover(row.id, hovering: hovering) }
   }
 
@@ -182,6 +184,7 @@ extension PortListView {
       if hovering { loadTooltip(entry) }
     }
     .help(tooltips[entry.id] ?? "")
+    .contextMenu { portContextMenu(entry) }
   }
 
   // MARK: - Row pieces
@@ -211,6 +214,24 @@ extension PortListView {
 
   func isShowing(_ id: String, _ mode: RowExpansion.Mode) -> Bool {
     expanded?.id == id && expanded?.mode == mode
+  }
+
+  /// Right-click: copy, open, hide. Hiding is the lightweight answer to "this
+  /// port is always there and I don't care" — it keeps running, unlisted.
+  @ViewBuilder
+  func portContextMenu(_ entry: PortEntry) -> some View {
+    if let url = entry.previewURL {
+      Button("Open in Browser") { NSWorkspace.shared.open(url) }
+    }
+    Button("Copy localhost:\(String(entry.port))") { copyAddress(entry) }
+    Divider()
+    Button("Hide :\(String(entry.port))") {
+      HiddenPorts.hide(entry.port)
+      monitor.refresh()
+    }
+    Button("Hidden Ports…") {
+      NotificationCenter.default.post(name: .pierOpenSettings, object: nil)
+    }
   }
 
   /// Kill for a clustered row — one pid, so it takes every port under it.

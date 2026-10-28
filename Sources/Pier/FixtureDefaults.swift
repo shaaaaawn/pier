@@ -27,7 +27,7 @@ enum FixtureDefaults {
   /// adding a new `@AppStorage` key to the UI means adding it here too.
   static let keys: [String] = [
     "listFilter", "portSort", "hideSystem", "previewViewport",
-    PanelSize.widthKey, PanelSize.heightKey,
+    PanelSize.widthKey, PanelSize.heightKey, HiddenPorts.defaultsKey,
   ]
 
   private static var saved: [String: Any?] = [:]
@@ -48,6 +48,7 @@ enum FixtureDefaults {
     defaults.set(PreviewViewport.desktop.rawValue, forKey: "previewViewport")
     defaults.set(Double(PanelSize.defaultWidth), forKey: PanelSize.widthKey)
     defaults.set(Double(PanelSize.defaultHeight), forKey: PanelSize.heightKey)
+    defaults.set("", forKey: HiddenPorts.defaultsKey)
   }
 
   /// `--appearance light|dark` (default dark). Pinned like every other input:

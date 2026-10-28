@@ -140,6 +140,8 @@ final class PortMonitor: ObservableObject {
   /// what makes a cold start silent.
   /// Internal, not private: the differ lives in +Events.
   var lastSnapshot: MonitorSnapshot?
+  /// The hidden-port set the last snapshot was taken under (see `recordEvents`).
+  var lastHidden: Set<Int>?
   /// Actions Pier itself just took, so the resulting event reads "you" rather
   /// than showing up as an unattributed kill ~5s later.
   var expectations: [(key: String, action: PierEvent.Action, expires: Date)] = []
@@ -227,7 +229,11 @@ final class PortMonitor: ObservableObject {
       // Stamp each row with its process's start time (libproc, ~1 µs per pid)
       // so a kill from a stale row can tell a recycled pid apart.
       var starts: [Int32: UInt64] = [:]
-      let entries = assembled.entries.map { entry -> PortEntry in
+      // Hidden ports are dropped here, once, so the list, counts, search,
+      // event feed and menu bar tooltip all agree they aren't there.
+      let hidden = HiddenPorts.current()
+      let entries = assembled.entries.filter { !hidden.contains($0.port) }.map {
+        entry -> PortEntry in
         var entry = entry
         if starts[entry.pid] == nil { starts[entry.pid] = Self.startTime(of: entry.pid) }
         entry.startTime = starts[entry.pid]
@@ -267,7 +273,7 @@ final class PortMonitor: ObservableObject {
         self.appleState = activitySnapshot.appleState
         self.history.record(readings)
         let now = Date()
-        self.recordEvents(ports: entries, activity: activity, now: now)
+        self.recordEvents(ports: entries, activity: activity, hidden: hidden, now: now)
         self.lastRefresh = now
         self.isRefreshing = false
       }
