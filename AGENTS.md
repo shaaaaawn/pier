@@ -448,7 +448,7 @@ test` check.
 
 - Pier bundles **no third-party marks**: harness, terminal and engine icons are
   read at runtime from the apps installed on the Mac (`AppIcons`, by bundle ID
-  in `harnessTable`). Don't add brand PNGs back to `Resources/`
+  in `harnessTable`). Don't add brand PNGs back (there is no `Resources/` at all now)
   (`IconResourceTests` fails if you do).
 - There is **no LICENSE file** — without one, published code is all-rights-reserved.
 - `dist/` and `.build/` are gitignored; the ad-hoc signed app is not for

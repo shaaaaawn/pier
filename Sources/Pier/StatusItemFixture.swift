@@ -15,9 +15,7 @@ enum StatusItemFixture {
     _ = NSApplication.shared
     NSApp.setActivationPolicy(.accessory)
     try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-    let icon = Bundle.module.image(forResource: "menubar-icon")
-    icon?.isTemplate = true
-    icon?.size = NSSize(width: 16, height: 16)
+    let icon = PierGlyph.image()
 
     for (name, appearance, background) in [
       ("light", NSAppearance.Name.aqua, NSColor(white: 0.93, alpha: 1)),

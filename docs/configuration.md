@@ -79,8 +79,8 @@ recorded.
 
 ## Icon rendering
 
-Rendered app and menu bar icons are checked in, so normal builds need no SVG
-toolchain.
+The rendered app icon (`assets/Pier.icns`) is checked in, so normal builds
+need no SVG toolchain. The menu bar glyph is drawn in code and needs nothing.
 
 Maintainers can regenerate them with:
 
@@ -91,6 +91,5 @@ Maintainers can regenerate them with:
 The script uses the first available renderer: `rsvg-convert`, Google Chrome,
 Playwright configured through `PIER_PLAYWRIGHT_NODE_MODULES`, or `qlmanage`.
 
-Third-party harness icons are a separate pipeline controlled by
-`PIER_ICON_SRC`. Their redistribution status must be resolved before a public
-release.
+Agent, terminal and Docker icons are not rendered or bundled: Pier reads them
+from the apps installed on the Mac at runtime.

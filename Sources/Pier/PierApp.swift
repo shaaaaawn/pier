@@ -221,13 +221,8 @@ final class MenuBarController: NSObject {
   /// Template image: AppKit paints it with the menu bar's own foreground
   /// color, so it inverts automatically — dark glyph on a light menu bar,
   /// light glyph on a dark one — and picks up the highlight tint while the
-  /// panel is open. The PNG is a solid black glyph whose alpha is the shape.
-  private static let icon: NSImage? = {
-    guard let image = Bundle.module.image(forResource: "menubar-icon") else { return nil }
-    image.isTemplate = true
-    image.size = NSSize(width: 16, height: 16)
-    return image
-  }()
+  /// panel is open. See `PierGlyph`.
+  private static let icon: NSImage? = PierGlyph.image()
 
   private var portCount = 0
   private var memoryPressure: MemoryPressure = .normal
