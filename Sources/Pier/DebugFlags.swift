@@ -203,10 +203,27 @@ enum DebugFlags {
         var flags = [e.age(now: Date()) ?? "-"]
         if e.isOnLAN { flags.append("LAN") }
         if e.detached { flags.append("DETACHED") }
+        if e.tunnel != nil { flags.append("PUBLIC") }
         print(
           "      \(e.port) \(e.dev?.framework ?? "?") — \(e.processName) · \(e.attribution.badgeLabel)"
             + "  [\(flags.joined(separator: " "))]")
       }
+    }
+    // Tunnels: each tunnel's own listener, and every row it makes public.
+    let tunneled = monitor.entries.filter { $0.tunnel != nil || $0.role != nil }
+    print("tunnels (\(tunneled.count)):")
+    for e in tunneled.sorted(by: { $0.port < $1.port }) {
+      var detail =
+        e.tunnel.map { "public — \($0.publicURL?.absoluteString ?? "address pending")" }
+        ?? e.role ?? ""
+      if let endpoint = e.tunnelEndpoint {
+        detail += " — \(endpoint.link.publicURL?.absoluteString ?? "address pending")"
+        if !endpoint.deadTargets.isEmpty {
+          detail +=
+            " [NO SERVER on \(endpoint.deadTargets.map { ":\($0)" }.joined(separator: ", "))]"
+        }
+      }
+      print("      \(e.port) \(e.processName) · \(detail)")
     }
     print("cmux: \(monitor.cmuxStatus)")
   }

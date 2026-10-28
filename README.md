@@ -144,8 +144,9 @@ gets a monogram.
 ## Acknowledgements
 
 Pier's status-item resilience and verification practices were informed by
-[CodexBar](https://github.com/steipete/CodexBar). The app's pier glyph and
-full-color icon live in [`assets/`](assets/).
+[CodexBar](https://github.com/steipete/CodexBar). The full-color app icon lives
+in [`assets/`](assets/); the menu bar glyph is drawn in code
+(`Sources/Pier/PierGlyph.swift`).
 
 ## License
 

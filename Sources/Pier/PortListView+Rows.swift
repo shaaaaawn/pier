@@ -214,6 +214,18 @@ extension PortListView {
         NSPasteboard.general.setString("http://\(ip):\(entry.port)", forType: .string)
       }
     }
+    if let tunnel = entry.tunnel ?? entry.tunnelEndpoint?.link, let url = tunnel.publicURL {
+      Divider()
+      if let browsable = tunnel.browsableURL {
+        Button("Open Public URL (\(url.host ?? browsable.absoluteString))") {
+          NSWorkspace.shared.open(browsable)
+        }
+      }
+      Button("Copy Public URL") {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(url.absoluteString, forType: .string)
+      }
+    }
     Divider()
     Button("Hide :\(String(entry.port))") {
       HiddenPorts.hide(entry.port)
@@ -316,6 +328,18 @@ extension PortListView {
         tag("LAN", tint: Color(nsColor: .systemBlue))
           .help(lanHelp(entry))
       }
+      if let tunnel = entry.tunnel {
+        // LAN is your network; public is the internet.
+        tag("public", tint: Color(nsColor: .systemPurple))
+          .help(tunnel.help)
+      }
+      if let dead = entry.tunnelEndpoint?.deadTargets, let first = dead.first {
+        tag("no server", tint: Self.detachedTint)
+          .help(
+            "Nothing is listening on :\(first), so anyone opening "
+              + "\(entry.tunnelEndpoint?.link.publicURL?.absoluteString ?? "the tunnel") "
+              + "gets an error page.")
+      }
       if entry.detached {
         tag("detached", tint: Self.detachedTint)
           .help(
@@ -328,6 +352,7 @@ extension PortListView {
   func metaLine(_ entry: PortEntry, groupTitle: String) -> some View {
     let extra = entry.attribution.rowBadge(inGroup: groupTitle)
     let age = entry.age(now: Date())
+    let host = entry.tunnelEndpoint?.link.publicURL?.host
     return HStack(spacing: 4) {
       if let extra {
         badgeIcon(entry.attribution)
@@ -337,8 +362,17 @@ extension PortListView {
           .truncationMode(.tail)
           .layoutPriority(2)
       }
-      if let age {
+      // A tunnel's public host is the one thing its row is for.
+      if let host {
         if extra != nil { separator }
+        Text(verbatim: host)
+          .lineLimit(1)
+          .truncationMode(.middle)
+          .layoutPriority(3)
+          .help("https://\(host) — right-click to open or copy")
+      }
+      if let age {
+        if extra != nil || host != nil { separator }
         Text(age)
           .help("Running for \(age)")
           .layoutPriority(1)
@@ -346,7 +380,7 @@ extension PortListView {
       // The pid gives way first, and whole — never a stub like "pi".
       ViewThatFits(in: .horizontal) {
         HStack(spacing: 4) {
-          if extra != nil || age != nil { separator }
+          if extra != nil || age != nil || host != nil { separator }
           Text(verbatim: "pid \(entry.pid)")
         }
         Color.clear.frame(width: 0, height: 0)
@@ -390,7 +424,7 @@ extension PortListView {
 
   /// The row's name: a dev server's framework and project, else the process.
   static func rowName(_ entry: PortEntry, groupTitle: String?) -> String {
-    guard let dev = entry.dev else { return entry.processName }
+    guard let dev = entry.dev else { return entry.role ?? entry.processName }
     return dev.project != nil && dev.project == groupTitle ? dev.framework : dev.label
   }
 
