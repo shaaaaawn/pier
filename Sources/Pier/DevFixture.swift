@@ -8,13 +8,15 @@ import SwiftUI
 enum DevFixture {
   static func port(
     _ pid: Int32, _ port: Int, _ name: String, _ attribution: Attribution,
-    dev: DevServer? = nil, cpu: Double = 0.4
+    dev: DevServer? = nil, cpu: Double = 0.4, binds: [String] = ["127.0.0.1"],
+    detached: Bool = false
   ) -> PortEntry {
     var entry = PortEntry(
       pid: pid, port: port, proto: .tcp, processName: name, user: "dev",
-      bindAddresses: ["127.0.0.1"], attribution: attribution,
+      bindAddresses: binds, attribution: attribution,
       usage: Usage(cpu: cpu, rssKB: 140 * 1024))
     entry.dev = dev
+    entry.detached = detached
     return entry
   }
 
@@ -29,7 +31,12 @@ enum DevFixture {
       52_425, 8786, "workerd", .harness("Codex"),
       dev: DevServer(framework: "Wrangler", project: "api (lanes/f)")),
     port(
-      37_707, 4173, "node", .none, dev: DevServer(framework: "Node", project: "planner")),
+      37_707, 4173, "node", .none, dev: DevServer(framework: "Node", project: "planner"),
+      binds: ["*"]),
+    // Left behind by an agent session that has since exited.
+    port(
+      30_118, 3000, "node", .none, dev: DevServer(framework: "Next.js", project: "old-landing"),
+      detached: true),
     port(
       41_010, 5173, "node",
       .terminal(TerminalSession(app: .ghostty, directory: "~/code/site", tty: "ttys005")),

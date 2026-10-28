@@ -48,14 +48,11 @@ extension PortListView {
     // The group header already names the attribution; only show a badge when
     // it adds something (a cmux surface), and promote the process line when it
     // doesn't — one tighter line instead of two saying the same thing.
-    let extra = entry.attribution.rowBadge(inGroup: groupTitle)
-    return HStack(alignment: .center, spacing: 8) {
+    return HStack(alignment: .center, spacing: 10) {
       portButton(entry)
       VStack(alignment: .leading, spacing: 2) {
-        if let extra {
-          badge(entry.attribution, text: extra)
-        }
-        subline(entry, emphasized: extra == nil, groupTitle: groupTitle)
+        titleLine(entry, groupTitle: groupTitle)
+        metaLine(entry, groupTitle: groupTitle)
       }
       Spacer(minLength: 4)
       trailingSlot(entry)
@@ -117,24 +114,11 @@ extension PortListView {
 
   func clusterRow(_ row: PortRow, groupTitle: String) -> some View {
     let entry = row.primary
-    let extra = entry.attribution.rowBadge(inGroup: groupTitle)
-    return HStack(alignment: .center, spacing: 8) {
+    return HStack(alignment: .center, spacing: 10) {
       portButton(entry)
       VStack(alignment: .leading, spacing: 2) {
-        if let extra {
-          HStack(spacing: 5) {
-            badge(entry.attribution, text: extra)
-            countChip(row.totalCount)
-          }
-          subline(entry, groupTitle: groupTitle)
-        } else {
-          // No badge to stack above, so the count rides the process line
-          // instead of floating alone on its own row.
-          HStack(spacing: 5) {
-            subline(entry, emphasized: true, groupTitle: groupTitle)
-            countChip(row.totalCount)
-          }
-        }
+        titleLine(entry, groupTitle: groupTitle, count: row.totalCount)
+        metaLine(entry, groupTitle: groupTitle)
       }
       Spacer(minLength: 4)
       // A cluster is one pid holding several ports, so it gets its own kill —
@@ -224,6 +208,12 @@ extension PortListView {
       Button("Open in Browser") { NSWorkspace.shared.open(url) }
     }
     Button("Copy localhost:\(String(entry.port))") { copyAddress(entry) }
+    if entry.isOnLAN, let ip = LAN.ipv4() {
+      Button("Copy LAN URL (\(ip):\(String(entry.port)))") {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("http://\(ip):\(entry.port)", forType: .string)
+      }
+    }
     Divider()
     Button("Hide :\(String(entry.port))") {
       HiddenPorts.hide(entry.port)
@@ -298,6 +288,104 @@ extension PortListView {
       .padding(.vertical, 1)
       .background(Color.secondary.opacity(0.15), in: Capsule())
       .foregroundStyle(.secondary)
+  }
+
+  // MARK: - Two-line rows
+  //
+  // Line one says what it is; line two, quietly, everything else. The old
+  // layout led with a coloured attribution pill on every row — "Claude Code"
+  // twelve times down a list — and filled the second line with pids and bind
+  // addresses. Attribution is now the agent's own icon in secondary text,
+  // shown only where the section header doesn't already say it; addresses
+  // moved to the tooltip, replaced by the two facts that matter: how long it's
+  // been up, and whether the network can reach it.
+
+  /// Name, then tags that only appear when they mean something.
+  func titleLine(_ entry: PortEntry, groupTitle: String, count: Int? = nil) -> some View {
+    // No leading glyph: names line up down the list, and a dev server already
+    // reads as one — "Vite", "Angular · storefront".
+    HStack(spacing: 5) {
+      Text(verbatim: Self.rowName(entry, groupTitle: groupTitle))
+        .font(.system(size: 12.5, weight: .medium))
+        .foregroundStyle(.primary)
+        .lineLimit(1)
+        .truncationMode(.tail)
+        .layoutPriority(1)
+      if let count, count > 1 { countChip(count) }
+      if entry.isOnLAN {
+        tag("LAN", tint: Color(nsColor: .systemBlue))
+          .help(lanHelp(entry))
+      }
+      if entry.detached {
+        tag("detached", tint: Self.detachedTint)
+          .help(
+            "Whatever started this — an agent, a terminal — has exited. It's still serving.")
+      }
+    }
+  }
+
+  /// Agent (when the header doesn't already say it) · age · pid · UDP.
+  func metaLine(_ entry: PortEntry, groupTitle: String) -> some View {
+    let extra = entry.attribution.rowBadge(inGroup: groupTitle)
+    let age = entry.age(now: Date())
+    return HStack(spacing: 4) {
+      if let extra {
+        badgeIcon(entry.attribution)
+        // Who started it outranks the pid when the line runs short.
+        Text(extra)
+          .lineLimit(1)
+          .truncationMode(.tail)
+          .layoutPriority(2)
+      }
+      if let age {
+        if extra != nil { separator }
+        Text(age)
+          .help("Running for \(age)")
+          .layoutPriority(1)
+      }
+      // The pid gives way first, and whole — never a stub like "pi".
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: 4) {
+          if extra != nil || age != nil { separator }
+          Text(verbatim: "pid \(entry.pid)")
+        }
+        Color.clear.frame(width: 0, height: 0)
+      }
+      if entry.proto == .udp {
+        separator
+        Text("UDP")
+      }
+    }
+    .font(.system(size: 10.5))
+    .foregroundStyle(.secondary)
+    .lineLimit(1)
+    .help(entry.attribution.badgeLabel)
+  }
+
+  private var separator: some View {
+    Text("·").foregroundStyle(.tertiary)
+  }
+
+  func tag(_ text: String, tint: Color) -> some View {
+    Text(text)
+      .font(.system(size: 9, weight: .semibold))
+      .padding(.horizontal, 5)
+      .padding(.vertical, 1)
+      .background(tint.opacity(0.14), in: Capsule())
+      .foregroundStyle(tint)
+  }
+
+  /// The same adaptive orange as the strain dot: readable in light and dark.
+  static var detachedTint: Color {
+    MemoryPressure.warning.statusTint.map { Color(nsColor: $0) } ?? .orange
+  }
+
+  func lanHelp(_ entry: PortEntry) -> String {
+    var text =
+      "Listening on every interface (\(entry.bindSummary)) — other devices on your "
+      + "network can reach it unless the firewall blocks it."
+    if let ip = LAN.ipv4() { text += "\nhttp://\(ip):\(entry.port)" }
+    return text
   }
 
   /// The row's name: a dev server's framework and project, else the process.

@@ -65,6 +65,17 @@ extension PortMonitor {
     }
   }
 
+  /// "Stop All" for detached dev servers: one SIGTERM per process (a server
+  /// can hold several ports), each behind the same identity check as a
+  /// single kill, so a pid that changed hands since the list was read is
+  /// left alone. `terminate` records the expected stops, so they read "you".
+  func stopDetached(_ entries: [PortEntry]) {
+    var seen: Set<Int32> = []
+    for entry in entries where seen.insert(entry.pid).inserted {
+      terminate(entry.pid, expectedStart: entry.startTime)
+    }
+  }
+
   /// Run a Docker lifecycle or prune action, then refresh so the panel reflects
   /// the result. Output is surfaced on failure — a prune that can't run should
   /// say why rather than look like nothing happened.
