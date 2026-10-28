@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pier — what's running on your Mac, and who started it</title>
+<meta name="description" content="A native macOS menu bar app that lists every listening port and attributes it to the agent or terminal that started it.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script defer src="site.js"></script>
+</head>
+<body>
+<header class="nav"><div class="wrap">
+  <a class="brand" href="./"><img src="icon.svg" alt="">Pier</a>
+  <nav class="links">
+    <a class="opt" href="./#features">Features</a>
+    <a class="opt" href="./#install">Install</a>
+    <a href="docs.html">Docs</a>
+    <a href="https://github.com/shaaaaawn/pier">GitHub</a>
+    <button id="theme" aria-label="Toggle light and dark theme">◑</button>
+  </nav>
+</div></header>
+<main>
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <h1>See what's running on your Mac — and <em>who started it.</em></h1>
+      <p class="lede">Pier lives in the menu bar and ties every listening port, container and MCP server back to the agent harness or terminal session that spawned it. Then it puts stop, kill and preview one click away.</p>
+      <a class="btn primary" href="#install">Get Pier</a>
+      <a class="btn ghost" href="docs.html">Read the docs</a>
+      <div class="badges"><span>macOS 13+</span><span>Swift 6</span><span>No dependencies</span><span>No telemetry</span></div>
+    </div>
+    <div class="shot"><img src="panel.png" alt="The Pier panel: listening ports grouped under cmux workspaces, Cursor and Codex, each with a CPU sparkline, above a Docker section"></div>
+  </div>
+  <svg class="waves" viewBox="0 0 1440 64" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40 Q180 0 360 32 T720 32 T1080 32 T1440 28 V64 H0Z"/></svg>
+</div>
+
+<section id="features"><div class="wrap">
+  <h2>Everything on the water, one glance</h2>
+  <p class="sub">Port 3000 is taken. Is it the thing you started, or something an agent left behind an hour ago?</p>
+  <div class="grid">
+    <div class="card"><h3><i>⚓</i>Listening ports</h3><p>TCP and UDP listeners, deduplicated, grouped by owner, ranked by recent activity rather than a lucky idle moment.</p></div>
+    <div class="card"><h3><i>🧭</i>Agent attribution</h3><p>Claude Code, Codex, Cursor, Kimi, OpenCode and more, plus cmux workspaces and the Ghostty or Terminal tab a server runs in.</p></div>
+    <div class="card"><h3><i>📦</i>Background activity</h3><p>Docker and Apple <code>container</code> workloads (stopped ones too), booted simulators, and MCP servers, each with usage.</p></div>
+    <div class="card"><h3><i>🔍</i>Live context</h3><p>CPU history, start/stop events, inline web previews pinned to the previewed host, and logs you can tail in place.</p></div>
+    <div class="card"><h3><i>🌡</i>System glance</h3><p>RAM, swap, disk, thermal state and SMC temperatures. The icon tints when macOS reports memory pressure.</p></div>
+    <div class="card"><h3><i>🛟</i>Careful controls</h3><p>Open, copy, start, stop, kill, prune. Destructive actions confirm first and name exactly what they remove.</p></div>
+  </div>
+</div></section>
+
+<section class="alt"><div class="wrap">
+  <h2>How it knows</h2>
+  <p class="sub">Bounded local probes, no daemon, no network calls to anyone.</p>
+  <pre class="flow">lsof listeners ─┐
+ps processes ───┼─&gt; attribution ─&gt; ports grouped by harness or cmux session
+cmux sessions ──┘
+
+docker / container / simctl / MCP detection ─&gt; activity sections</pre>
+  <ul class="principles">
+    <li><strong>Never trusts a CLI's own status.</strong> Engine state comes from a real API call, because <code>docker ps</code> can exit 0 while the daemon is down.</li>
+    <li><strong>Says why, once.</strong> A missing tool or stopped daemon degrades to an empty section with the reason in its header, not silence.</li>
+    <li><strong>Private by construction.</strong> No telemetry or update checks. The only thing written to disk is UI prefs and a 0600 log.</li>
+  </ul>
+</div></section>
+
+<section id="install"><div class="wrap">
+  <h2>Install</h2>
+  <p class="sub">Pier is built from source today. Signed, notarized downloads will show up on the right when they exist.</p>
+  <div class="release">
+    <div class="card">
+      <span class="tag">Build from source</span>
+      <h3>macOS 13+, Xcode 26+</h3>
+<pre><code>git clone https://github.com/shaaaaawn/pier.git
+cd pier
+make build
+open dist/Pier.app</code></pre>
+      <p class="muted">The local build is ad-hoc signed; macOS may ask you to confirm the first launch. See <a href="docs.html#getting-started">Getting started</a>.</p>
+    </div>
+    <div class="card" id="latest"><span class="tag">Release</span><p class="muted">Checking for the latest release…</p></div>
+  </div>
+</div></section>
+</main>
+<footer><div class="wrap">
+  <span>Pier — a macOS menu bar app. No telemetry, no accounts.</span>
+  <a href="docs.html#privacy-and-security">Privacy</a>
+  <a href="https://github.com/shaaaaawn/pier/blob/main/SECURITY.md">Security</a>
+  <a href="https://github.com/shaaaaawn/pier/blob/main/CONTRIBUTING.md">Contributing</a>
+</div></footer>
+</body>
+</html>
