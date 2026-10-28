@@ -170,6 +170,13 @@ extension PortMonitor {
           PierLog.shared.log("refused to signal pid \(pid): not a real process id")
           continue
         }
+        // Same identity check as port kills: a recycled pid must not take the
+        // SIGTERM meant for the server this row was collected from.
+        guard Self.isSameProcess(expected: entry.pidStarts[pid], current: Self.startTime(of: pid))
+        else {
+          PierLog.shared.log("refused to signal pid \(pid): a different process holds it now")
+          continue
+        }
         kill(pid, SIGTERM)
       }
       DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.refresh() }

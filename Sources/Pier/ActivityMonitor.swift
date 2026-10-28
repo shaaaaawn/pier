@@ -60,6 +60,10 @@ struct ActivityEntry: Identifiable, Equatable {
   let detail: String
   /// Killable pids — MCP rows only (grouped duplicates share one row).
   var pids: [Int32] = []
+  /// Each killable pid's libproc start time, stamped at collection. Rows can
+  /// be up to 30 s old when their Kill button is clicked, and a recycled pid
+  /// would receive the signal instead — see `PortMonitor+Actions`.
+  var pidStarts: [Int32: UInt64] = [:]
   /// Host ports published by a Docker container.
   var ports: [Int] = []
   /// Harness/cmux attribution — MCP rows only.

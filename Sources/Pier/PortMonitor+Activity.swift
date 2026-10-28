@@ -99,7 +99,19 @@ extension PortMonitor {
     let fullPS =
       commandsOutput
       ?? ProcessRunner.run("/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)?.stdout ?? ""
-    activity += ActivityParser.mcpEntries(fullPS: fullPS, table: table, cmux: cmux)
+    var mcp = ActivityParser.mcpEntries(fullPS: fullPS, table: table, cmux: cmux)
+    // Stamp each killable pid's start time the same way port rows are stamped:
+    // an MCP row's Kill button signals pids read up to 30 s earlier, and a pid
+    // that has since been recycled must not take the SIGTERM meant for the
+    // server the row names.
+    for i in mcp.indices {
+      var starts: [Int32: UInt64] = [:]
+      for pid in mcp[i].pids where starts[pid] == nil {
+        starts[pid] = PortMonitor.startTime(of: pid)
+      }
+      mcp[i].pidStarts = starts
+    }
+    activity += mcp
     // Free: read off the process table and command lines already in hand.
     activity += SimulatorParser.entries(
       table: table, commands: commands ?? parseCommands(fullPS))
