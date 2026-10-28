@@ -450,6 +450,7 @@ test` check.
   read at runtime from the apps installed on the Mac (`AppIcons`, by bundle ID
   in `harnessTable`). Don't add brand PNGs back (there is no `Resources/` at all now)
   (`IconResourceTests` fails if you do).
-- There is **no LICENSE file** — without one, published code is all-rights-reserved.
+- Pier is **MIT-licensed** (`LICENSE`). Anything vendored keeps its own licence
+  file beside it (e.g. `site/marked.LICENSE.md`).
 - `dist/` and `.build/` are gitignored; the ad-hoc signed app is not for
   distribution (that needs Developer ID + notarization).
