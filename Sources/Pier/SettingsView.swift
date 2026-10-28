@@ -217,7 +217,7 @@ struct ShortcutRecorder: View {
   var body: some View {
     HStack(spacing: 6) {
       Button {
-        recording ? stop() : start()
+        recording ? stop(restore: true) : start()
       } label: {
         Text(recording ? "Press a shortcut…" : (combo?.display ?? "Record Shortcut"))
           .font(.system(size: 12, weight: combo == nil ? .regular : .medium, design: .rounded))
@@ -235,7 +235,7 @@ struct ShortcutRecorder: View {
         .help("Clear the shortcut")
       }
     }
-    .onDisappear(perform: stop)
+    .onDisappear { stop(restore: true) }
   }
 
   private func start() {
@@ -245,12 +245,11 @@ struct ShortcutRecorder: View {
     monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
       switch Int(event.keyCode) {
       case 53:  // Esc
-        stop()
-        HotKeyCenter.shared.register(combo)
+        stop(restore: true)
       case 51, 117:  // Delete, Forward Delete
         combo = nil
-        onChange(nil)
-        stop()
+        onChange(nil)  // saves + registers nil
+        stop(restore: false)
       default:
         guard
           let recorded = KeyCombo.from(
@@ -258,17 +257,22 @@ struct ShortcutRecorder: View {
             characters: event.charactersIgnoringModifiers)
         else { return nil }  // needs ⌘, ⌃ or ⌥ — keep listening
         combo = recorded
-        onChange(recorded)
-        stop()
+        onChange(recorded)  // saves + registers the new combo
+        stop(restore: false)
       }
       return nil
     }
   }
 
-  private func stop() {
+  /// `restore`: re-register the shortcut `start()` suspended. Leaving it off
+  /// after a recorded/cleared combo — `onChange` already registered that one.
+  /// Without it, closing Settings mid-recording left the shortcut dead.
+  private func stop(restore: Bool) {
+    let wasRecording = recording
     recording = false
     if let monitor { NSEvent.removeMonitor(monitor) }
     monitor = nil
+    if restore, wasRecording { HotKeyCenter.shared.register(combo) }
   }
 }
 
