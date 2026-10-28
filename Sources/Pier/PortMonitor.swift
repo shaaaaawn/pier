@@ -66,6 +66,8 @@ final class PortMonitor: ObservableObject {
   var cmuxPassword: String?
   let cmuxPath: String?
   let dockerPath: String?
+  /// Remembers each tunnel's public address across refreshes.
+  let tunnelResolver = TunnelResolver()
   let containerPath: String?
 
   /// The CLI a log source needs, or nil when it isn't installed.
@@ -232,7 +234,14 @@ final class PortMonitor: ObservableObject {
       // Hidden ports are dropped here, once, so the list, counts, search,
       // event feed and menu bar tooltip all agree they aren't there.
       let hidden = HiddenPorts.current()
-      let entries = assembled.entries.filter { !hidden.contains($0.port) }.map {
+      // Tunnels: the one step after assembly that does I/O — a loopback GET
+      // to each tunnel's own API, cached per process.
+      var assembledEntries = assembled.entries
+      if let resolver = self?.tunnelResolver {
+        let tunnels = Tunnels.find(entries: assembledEntries, commands: assembled.commands)
+        Tunnels.apply(resolver.resolve(tunnels), to: &assembledEntries)
+      }
+      let entries = assembledEntries.filter { !hidden.contains($0.port) }.map {
         entry -> PortEntry in
         var entry = entry
         if starts[entry.pid] == nil { starts[entry.pid] = Self.startTime(of: entry.pid) }

@@ -8,6 +8,13 @@ document are product constraints, not marketing claims.
 Pier makes no telemetry, analytics, update-check, or background service API
 requests.
 
+The one request a refresh makes is on loopback, to a running tunnel: Pier
+asks cloudflared's metrics server (`GET /quicktunnel`) or ngrok's agent API
+(`GET /api/tunnels`) for the tunnel's public address. It goes only to
+`127.0.0.1`, only to a port `lsof` shows that tunnel process itself
+listening on, with a 0.5 s timeout and a 64 KB cap. The answer is cached for
+the life of the process. Nothing is sent off the machine.
+
 User-selected previews load a local or LAN URL in a `WKWebView`. The web view
 uses a non-persistent data store, so previewed services do not leave cookies,
 local storage, or caches in Pier.

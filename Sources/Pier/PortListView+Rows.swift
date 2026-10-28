@@ -214,6 +214,18 @@ extension PortListView {
         NSPasteboard.general.setString("http://\(ip):\(entry.port)", forType: .string)
       }
     }
+    if let tunnel = entry.tunnel, let url = tunnel.publicURL {
+      Divider()
+      if let browsable = tunnel.browsableURL {
+        Button("Open Public URL (\(url.host ?? browsable.absoluteString))") {
+          NSWorkspace.shared.open(browsable)
+        }
+      }
+      Button("Copy Public URL") {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(url.absoluteString, forType: .string)
+      }
+    }
     Divider()
     Button("Hide :\(String(entry.port))") {
       HiddenPorts.hide(entry.port)
@@ -316,6 +328,11 @@ extension PortListView {
         tag("LAN", tint: Color(nsColor: .systemBlue))
           .help(lanHelp(entry))
       }
+      if let tunnel = entry.tunnel {
+        // LAN is your network; public is the internet.
+        tag("public", tint: Color(nsColor: .systemPurple))
+          .help(tunnel.help)
+      }
       if entry.detached {
         tag("detached", tint: Self.detachedTint)
           .help(
@@ -390,7 +407,7 @@ extension PortListView {
 
   /// The row's name: a dev server's framework and project, else the process.
   static func rowName(_ entry: PortEntry, groupTitle: String?) -> String {
-    guard let dev = entry.dev else { return entry.processName }
+    guard let dev = entry.dev else { return entry.role ?? entry.processName }
     return dev.project != nil && dev.project == groupTitle ? dev.framework : dev.label
   }
 

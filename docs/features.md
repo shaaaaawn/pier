@@ -48,6 +48,12 @@ something:
 - **LAN** — bound to every interface (`0.0.0.0`, `*`, `::`), so other devices on
   the network can reach it unless the firewall blocks it. Right-click → *Copy LAN
   URL*. Hover for the exact addresses.
+- **public** — reachable from the internet through a tunnel: a Cloudflare
+  quick tunnel (`cloudflared tunnel --url …`) or ngrok (`ngrok http 3000`).
+  Hover for the public address; right-click → *Open Public URL* / *Copy Public
+  URL*. The tunnel's own listener is named for what it does, "Cloudflare
+  Tunnel → :5173". A named Cloudflare tunnel routes by its config file, which
+  Pier doesn't read, so only its own row is labelled.
 - **detached** — a dev server whose agent, terminal or shell has exited, but
   which is still listening. A banner at the top offers **Stop All…**, which lists
   every server it will stop and checks each is still the same process first.

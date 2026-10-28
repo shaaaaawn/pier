@@ -133,6 +133,11 @@ struct PortEntry: Identifiable, Equatable {
   var dev: DevServer?
   /// A dev server whose starting session is gone (see `DevServers.isDetached`).
   var detached = false
+  /// Reachable from the internet through a tunnel (Cloudflare, ngrok).
+  var tunnel: TunnelLink?
+  /// What the process is, when its name undersells it: a tunnel's own
+  /// listener reads "ngrok → :3000", not "ngrok".
+  var role: String?
 
   var id: String { "\(pid):\(port):\(proto.rawValue)" }
   var bindSummary: String { bindAddresses.joined(separator: ", ") }
