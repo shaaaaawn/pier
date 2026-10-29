@@ -213,7 +213,7 @@ struct PortListView: View {
       ViewThatFits(in: .horizontal) {
         Group {
           if let last = monitor.lastRefresh {
-            Text("Updated ") + Text(last, style: .relative)
+            Text("Updated ") + .relative(last, live: monitor.windowVisible)
           } else {
             Text("Not refreshed yet")
           }

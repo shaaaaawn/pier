@@ -45,6 +45,11 @@ enum FixtureRenderer {
   /// the fix. A fresh launch has no preview open, so measuring the app as it
   /// starts would report ~0% either way and grade nothing — AGENTS.md trap #10
   /// again, and it is why the probe has to force the state.
+  ///
+  /// The real-path arm also grades the footer's "Updated" age. It used to read
+  /// ~0.5% even with the bar dropped: that residual was the relative-date text
+  /// ticking once a second and relayouting the hidden panel each time, until
+  /// `Text.relative(_:live:)` stopped it. It reads 0.0% now.
   @MainActor
   static func probeIdleCPU(seconds: Int = 8) -> Never {
     _ = NSApplication.shared

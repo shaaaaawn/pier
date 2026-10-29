@@ -237,8 +237,14 @@ Do not re-learn these. Each has a test locking it in.
     it: a running `repeatForever` survives its value being reassigned. Anything
     added under the panel that animates, polls, or streams needs the same
     treatment — the log drawer got it via its `active` parameter — and needs
-    grading with `--probe-idle-cpu` (this branch: median 21.9% mounted → 1.2%
-    through the real close path). The probe has to *force* the preview's state,
+    grading with `--probe-idle-cpu` (median ~20–35% mounted → 0.0% through the
+    real close path). The residual ~0.5% the real path used to read was the
+    **relative-date tick**: `Text(date, style: .relative)` re-resolves once a
+    second, and each pass relayouts the hidden panel just like an animation
+    frame — ~1.2s of `NSHostingView.layout()` per minute on a live closed panel.
+    `Text.relative(_:live:)` swaps it for a static string while hidden; any new
+    `.relative`/`.timer` text or `TimelineView` needs the same.
+    The probe has to *force* the preview's state,
     because a fresh launch has no preview open and would report ~0% whether or
     not the bug is present. Its second arm deliberately forces *only* the state
     and closes the panel through `windowVisible`, the way `closePanel()` does —
