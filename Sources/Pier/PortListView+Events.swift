@@ -80,7 +80,7 @@ extension PortListView {
         .foregroundStyle(.secondary)
       }
       Spacer(minLength: 4)
-      Text(event.date, style: .relative)
+      Text.relative(event.date, live: monitor.windowVisible)
         .font(.system(size: 9.5))
         .foregroundStyle(.tertiary)
         .lineLimit(1)
