@@ -142,6 +142,7 @@ final class MenuBarController: NSObject {
     // The global shortcut opens the panel from anywhere — including when a
     // crowded menu bar or the notch hides the icon.
     HotKeyCenter.shared.onPress = { [weak self] in self?.togglePanel() }
+    Notifier.shared.onOpen = { [weak self] in self?.showPanelIfHidden() }
     HotKeyCenter.shared.register(KeyCombo.saved())
     NotificationCenter.default.addObserver(
       forName: .pierOpenSettings, object: nil, queue: .main

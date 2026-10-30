@@ -227,6 +227,15 @@ extension PortListView {
       }
     }
     Divider()
+    if HiddenPorts.parse(watchedPortsText).contains(entry.port) {
+      Button("Stop Notifying for :\(String(entry.port))") { WatchedPorts.toggle(entry.port) }
+    } else {
+      Button("Notify When :\(String(entry.port)) Starts or Stops") {
+        WatchedPorts.toggle(entry.port)
+        // The first watch is the moment to ask — it's what the prompt is for.
+        Notifier.shared.requestPermission()
+      }
+    }
     Button("Hide :\(String(entry.port))") {
       HiddenPorts.hide(entry.port)
       monitor.refresh()
@@ -344,6 +353,12 @@ extension PortListView {
         tag("detached", tint: Self.detachedTint)
           .help(
             "Whatever started this — an agent, a terminal — has exited. It's still serving.")
+      }
+      if HiddenPorts.parse(watchedPortsText).contains(entry.port) {
+        Image(systemName: "bell.fill")
+          .font(.system(size: 9))
+          .foregroundStyle(.secondary)
+          .help("Pier notifies you when :\(entry.port) starts or stops")
       }
     }
   }

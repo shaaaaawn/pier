@@ -43,6 +43,9 @@ struct SettingsView: View {
     var login: LoginItem.State = .off
     var combo: KeyCombo? = .defaultCombo
     var hidden: Set<Int> = [5353, 7000]
+    var devStops = true
+    var watched: Set<Int> = [3000]
+    var permission: Notifier.Permission = .allowed
   }
 
   @State private var login: LoginItem.State = .off
@@ -51,6 +54,10 @@ struct SettingsView: View {
   @State private var shortcutFailure: String?
   @State private var hidden: Set<Int> = []
   @State private var newPorts = ""
+  @State private var devStops = false
+  @State private var watched: Set<Int> = []
+  @State private var newWatched = ""
+  @State private var permission: Notifier.Permission = .notAsked
 
   var body: some View {
     Form {
@@ -92,6 +99,54 @@ struct SettingsView: View {
         }
       } header: {
         Text("Keyboard shortcut")
+      }
+
+      Section {
+        Toggle(isOn: devStopsBinding) {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("When a dev server stops")
+            Text("Not when you stop it from Pier.")
+              .font(.caption).foregroundStyle(.secondary)
+          }
+        }
+        VStack(alignment: .leading, spacing: 6) {
+          Text("When a watched port starts or stops")
+          if watched.isEmpty {
+            Text("Right-click a port to watch it, or add one that isn't running yet.")
+              .font(.caption).foregroundStyle(.secondary)
+          } else {
+            PortTags(ports: watched.sorted(), help: "Stop watching") { port in
+              watched.remove(port)
+              saveWatched()
+            }
+          }
+        }
+        HStack {
+          TextField("Watch ports", text: $newWatched, prompt: Text("Watch ports, e.g. 3000"))
+            .labelsHidden()
+            .textFieldStyle(.roundedBorder)
+            .onSubmit(addWatched)
+          Button("Watch", action: addWatched)
+            .disabled(HiddenPorts.parse(newWatched).isEmpty)
+        }
+        if permission == .denied {
+          HStack {
+            Label("Notifications for Pier are off in System Settings", systemImage: "bell.slash")
+              .font(.caption).foregroundStyle(.orange)
+            Spacer()
+            Button("Open…") { Notifier.openSystemSettings() }
+          }
+        }
+      } header: {
+        Text("Notifications")
+      } footer: {
+        Text(
+          "Pier looks every 5 seconds while the panel is open and every 30 while it's closed, so a notification can arrive up to half a minute late."
+        )
+        .font(.caption).foregroundStyle(.secondary)
+        .multilineTextAlignment(.leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
       }
 
       Section {
@@ -140,6 +195,31 @@ struct SettingsView: View {
       })
   }
 
+  private var devStopsBinding: Binding<Bool> {
+    Binding(
+      get: { devStops },
+      set: { on in
+        devStops = on
+        guard fixture == nil else { return }
+        UserDefaults.standard.set(on, forKey: NotifyRules.devStopsKey)
+        if on { Notifier.shared.requestPermission { permission = $0 } }
+      })
+  }
+
+  private func addWatched() {
+    let ports = HiddenPorts.parse(newWatched)
+    guard !ports.isEmpty else { return }
+    watched.formUnion(ports)
+    newWatched = ""
+    saveWatched()
+    if fixture == nil { Notifier.shared.requestPermission { permission = $0 } }
+  }
+
+  private func saveWatched() {
+    guard fixture == nil else { return }
+    WatchedPorts.set(watched)
+  }
+
   private var loginNote: String? {
     if let loginError { return loginError }
     switch login {
@@ -154,12 +234,18 @@ struct SettingsView: View {
       login = fixture.login
       combo = fixture.combo
       hidden = fixture.hidden
+      devStops = fixture.devStops
+      watched = fixture.watched
+      permission = fixture.permission
       return
     }
     login = LoginItem.current
     combo = KeyCombo.saved()
     shortcutFailure = HotKeyCenter.shared.failure
     hidden = HiddenPorts.current()
+    devStops = UserDefaults.standard.bool(forKey: NotifyRules.devStopsKey)
+    watched = WatchedPorts.current()
+    Notifier.shared.permission { permission = $0 }
   }
 
   private func addPorts() {
@@ -180,6 +266,7 @@ struct SettingsView: View {
 /// Removable port tags, wrapping onto as many rows as they need.
 private struct PortTags: View {
   let ports: [Int]
+  var help = "Show again"
   let remove: (Int) -> Void
 
   var body: some View {
@@ -197,7 +284,7 @@ private struct PortTags: View {
               .foregroundStyle(.secondary)
           }
           .buttonStyle(.plain)
-          .help("Show :\(port) again")
+          .help("\(help): :\(port)")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)

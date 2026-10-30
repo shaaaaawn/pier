@@ -63,6 +63,8 @@ struct PierEvent: Identifiable, Equatable {
   /// True when *Pier itself* caused this (you clicked Stop). Without it, every
   /// button click in the panel alerts you about yourself ~5s later.
   var selfInitiated = false
+  /// The dev server a port event was, so a notification can name it.
+  var dev: DevServer?
 
   var id: String { "\(date.timeIntervalSince1970):\(action.rawValue):\(subject.key)" }
 
@@ -104,13 +106,15 @@ enum EventDiff {
       events.append(
         PierEvent(
           date: date, action: .started,
-          subject: .port(entry.port, process: entry.processName), actor: entry.attribution))
+          subject: .port(entry.port, process: entry.processName), actor: entry.attribution,
+          dev: entry.dev))
     }
     for (key, entry) in before where after[key] == nil {
       events.append(
         PierEvent(
           date: date, action: .stopped,
-          subject: .port(entry.port, process: entry.processName), actor: entry.attribution))
+          subject: .port(entry.port, process: entry.processName), actor: entry.attribution,
+          dev: entry.dev))
     }
     return events.sorted { $0.subject.key < $1.subject.key }
   }
