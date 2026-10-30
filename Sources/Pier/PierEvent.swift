@@ -86,30 +86,46 @@ enum EventDiff {
   /// Events between two snapshots. `old == nil` is a **cold start**: it seeds
   /// the baseline and emits nothing, otherwise launching Pier would announce
   /// every one of the ~37 things already running.
-  static func between(old: MonitorSnapshot?, new: MonitorSnapshot, at date: Date) -> [PierEvent] {
+  static func between(
+    old: MonitorSnapshot?, new: MonitorSnapshot, at date: Date, watched: Set<Int> = []
+  ) -> [PierEvent] {
     guard let old else { return [] }
-    return portEvents(old: old, new: new, at: date)
+    return portEvents(old: old, new: new, at: date, watched: watched)
       + containerEvents(old: old, new: new, at: date)
       + mcpEvents(old: old, new: new, at: date)
   }
 
-  private static func portEvents(old: MonitorSnapshot, new: MonitorSnapshot, at date: Date)
-    -> [PierEvent]
-  {
+  /// The OS hands these out for `listen(0)`: a browser's or an agent's IPC
+  /// sockets, an inspector — 96% of one afternoon's port events, and a new
+  /// number each restart, so nothing worth a line in the feed or the badge.
+  static let ephemeralPorts = 49152...65535
+
+  /// An ephemeral port is still news when you watch it, or when it's a dev
+  /// server or a tunnel's — those were chosen, whatever number they got.
+  static func isNoise(_ entry: PortEntry, watched: Set<Int>) -> Bool {
+    ephemeralPorts.contains(entry.port) && !watched.contains(entry.port) && entry.dev == nil
+      && entry.tunnel == nil && entry.role == nil
+  }
+
+  private static func portEvents(
+    old: MonitorSnapshot, new: MonitorSnapshot, at date: Date, watched: Set<Int>
+  ) -> [PierEvent] {
     // Keyed by process+port, not by pid: a dev server that restarts itself onto
     // the same port gets a new pid, and "stopped then started" is the truth
     // there — but a pid-only key would also fire for a port change alone.
     var events: [PierEvent] = []
     let before = Dictionary(old.ports.map { (portKey($0), $0) }, uniquingKeysWith: { a, _ in a })
     let after = Dictionary(new.ports.map { (portKey($0), $0) }, uniquingKeysWith: { a, _ in a })
-    for (key, entry) in after where before[key] == nil {
+    // Presence is keyed on every row; only the event is skipped. Filtering the
+    // rows first would turn a row that gains or loses `dev` into a phantom.
+    for (key, entry) in after where before[key] == nil && !isNoise(entry, watched: watched) {
       events.append(
         PierEvent(
           date: date, action: .started,
           subject: .port(entry.port, process: entry.processName), actor: entry.attribution,
           dev: entry.dev))
     }
-    for (key, entry) in before where after[key] == nil {
+    for (key, entry) in before where after[key] == nil && !isNoise(entry, watched: watched) {
       events.append(
         PierEvent(
           date: date, action: .stopped,

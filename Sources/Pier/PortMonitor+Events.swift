@@ -27,7 +27,8 @@ extension PortMonitor {
 
   /// Diff this refresh against the last and record what changed.
   func recordEvents(
-    ports: [PortEntry], activity: [ActivityEntry], hidden: Set<Int> = [], now: Date
+    ports: [PortEntry], activity: [ActivityEntry], hidden: Set<Int> = [],
+    unreachable: Set<ActivityKind> = [], now: Date
   ) {
     // Hiding or unhiding a port makes it vanish from / appear in `ports`
     // without anything starting or stopping. Diffing across that change would
@@ -35,10 +36,12 @@ extension PortMonitor {
     if let lastHidden, lastHidden != hidden { lastSnapshot = nil }
     lastHidden = hidden
     let snapshot = MonitorSnapshot(ports: ports, activity: activity)
+      .carryingContainers(of: unreachable, from: lastSnapshot)
     defer { lastSnapshot = snapshot }
     guard !isFixture else { return }
     expectations.removeAll { $0.expires < now }
-    var fresh = EventDiff.between(old: lastSnapshot, new: snapshot, at: now)
+    var fresh = EventDiff.between(
+      old: lastSnapshot, new: snapshot, at: now, watched: WatchedPorts.current())
     guard !fresh.isEmpty else { return }
     for i in fresh.indices {
       if let match = expectations.firstIndex(where: {

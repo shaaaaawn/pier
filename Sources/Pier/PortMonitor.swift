@@ -68,6 +68,8 @@ final class PortMonitor: ObservableObject {
   let dockerPath: String?
   /// Remembers each tunnel's public address across refreshes.
   let tunnelResolver = TunnelResolver()
+  /// Stands in each process probe's last good output when a run fails.
+  let probeFallback = ProbeFallback()
   let containerPath: String?
 
   /// The CLI a log source needs, or nil when it isn't installed.
@@ -159,9 +161,9 @@ final class PortMonitor: ObservableObject {
       // Each writes only its own box; the group joins them before any is
       // read, so the assembly below stays deterministic.
       let group = DispatchGroup()
-      let socketsBox = ProbeResult<String>()
-      let psBox = ProbeResult<String>()
-      let fullPSBox = ProbeResult<String>()
+      let socketsBox = ProbeResult<ProcessRunner.Result>()
+      let psBox = ProbeResult<ProcessRunner.Result>()
+      let fullPSBox = ProbeResult<ProcessRunner.Result>()
       let cmuxBox = ProbeResult<(snapshot: CmuxSnapshot?, status: CmuxStatus)>()
       // Read once per refresh: it feeds the cmux probe's environment here and
       // the log drawer's copy below, instead of the view re-reading (and
@@ -172,18 +174,15 @@ final class PortMonitor: ObservableObject {
       DispatchQueue.global(qos: .userInitiated).async {
         // One lsof for both protocols: each call walks every process's file
         // table, so two calls cost twice as much for the same rows.
-        socketsBox.value =
-          ProcessRunner.run(
-            "/usr/sbin/lsof", ["+c", "0", "-nP", "-iTCP", "-sTCP:LISTEN", "-iUDP"], timeout: 10)?
-          .stdout ?? ""
+        socketsBox.value = ProcessRunner.run(
+          "/usr/sbin/lsof", ["+c", "0", "-nP", "-iTCP", "-sTCP:LISTEN", "-iUDP"], timeout: 10)
         group.leave()
       }
       group.enter()
       DispatchQueue.global(qos: .userInitiated).async {
         // %cpu + rss ride along on the existing chain probe — no extra process.
-        psBox.value =
-          ProcessRunner.run(
-            "/bin/ps", ["-axo", "pid=,ppid=,%cpu=,rss=,ucomm="], timeout: 5)?.stdout ?? ""
+        psBox.value = ProcessRunner.run(
+          "/bin/ps", ["-axo", "pid=,ppid=,%cpu=,rss=,ucomm="], timeout: 5)
         group.leave()
       }
       group.enter()
@@ -191,9 +190,8 @@ final class PortMonitor: ObservableObject {
         // Full command lines: shared by MCP detection and by path-based
         // harness attribution (a `node <path>/cli.js` harness is invisible
         // to ucomm).
-        fullPSBox.value =
-          ProcessRunner.run(
-            "/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)?.stdout ?? ""
+        fullPSBox.value = ProcessRunner.run(
+          "/bin/ps", ["-axo", "pid=,user=,command="], timeout: 5)
         group.leave()
       }
       // cmux is optional: tolerate absence/failure entirely — but record *why*
@@ -215,9 +213,11 @@ final class PortMonitor: ObservableObject {
         }
       }
       group.wait()
-      let socketsOut = socketsBox.value ?? ""
-      let psOut = psBox.value ?? ""
-      let fullPS = fullPSBox.value ?? ""
+      // A failed probe reads as its last good output, not as an empty machine.
+      guard let fallback = self?.probeFallback else { return }
+      let socketsOut = fallback.output(.sockets, socketsBox.value)
+      let psOut = fallback.output(.processTable, psBox.value)
+      let fullPS = fallback.output(.commandLines, fullPSBox.value)
       let cmux = cmuxBox.value?.snapshot
       let cmuxStatus = cmuxBox.value?.status ?? .notInstalled
 
@@ -282,7 +282,14 @@ final class PortMonitor: ObservableObject {
         self.appleState = activitySnapshot.appleState
         self.history.record(readings)
         let now = Date()
-        self.recordEvents(ports: entries, activity: activity, hidden: hidden, now: now)
+        // An engine that stopped answering hides its containers; it doesn't stop them.
+        let unreachable = Set(
+          [
+            activitySnapshot.dockerState == .unreachable ? ActivityKind.docker : nil,
+            activitySnapshot.appleState == .unreachable ? ActivityKind.apple : nil,
+          ].compactMap { $0 })
+        self.recordEvents(
+          ports: entries, activity: activity, hidden: hidden, unreachable: unreachable, now: now)
         self.lastRefresh = now
         self.isRefreshing = false
       }

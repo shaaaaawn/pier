@@ -197,6 +197,17 @@ Pier diffs consecutive refreshes to record:
 Actions taken through Pier are labeled `you`. A cold launch seeds the baseline
 without treating everything already running as new.
 
+Three things are deliberately left out:
+
+- ports the OS assigned (49152–65535), such as browser and agent IPC sockets.
+  They are still recorded if you watch the port, or if the row is a dev server
+  or a tunnel;
+- anything a failed probe would make look stopped. If `lsof` or `ps` times out
+  or can't run, Pier keeps its last good answer for up to two minutes and logs
+  the failure once;
+- containers of an engine that stopped answering. Pier reports what really
+  changed once the engine answers again.
+
 This is polling, not a system event stream. A process that starts and exits
 between refreshes may never be observed.
 
