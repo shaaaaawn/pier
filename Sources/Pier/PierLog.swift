@@ -88,9 +88,30 @@ final class PierLog: @unchecked Sendable {
     if Self.shouldRotate(size: Int(end) + line.utf8.count) {
       // `defer` above owns the close — closing here too would double-close the
       // same descriptor. Moving an open file is fine on APFS.
-      try? fm.removeItem(at: Self.previousURL)
-      try? fm.moveItem(at: url, to: Self.previousURL)
+      Self.rotate(handle: handle, file: url, previous: Self.previousURL)
     }
+  }
+
+  /// Move `file` to `previous`, unless another process got there first.
+  ///
+  /// Two Pier processes can share this log — the menu bar app and a debug or
+  /// fixture run — and both see it pass the limit on the same write. Unguarded,
+  /// the second one's "remove previous" deleted the file the first had just
+  /// rotated into place, losing the whole history. So: lock the file we wrote
+  /// to, and rotate only if `file` still *is* that file; if its inode moved
+  /// on, the rotation already happened.
+  static func rotate(handle: FileHandle, file: URL, previous: URL) {
+    let fd = handle.fileDescriptor
+    guard flock(fd, LOCK_EX) == 0 else { return }
+    defer { flock(fd, LOCK_UN) }
+    var mine = stat()
+    var current = stat()
+    guard fstat(fd, &mine) == 0, lstat(file.path, &current) == 0,
+      mine.st_dev == current.st_dev, mine.st_ino == current.st_ino
+    else { return }
+    let fm = FileManager.default
+    try? fm.removeItem(at: previous)
+    try? fm.moveItem(at: file, to: previous)
   }
 
   // MARK: - Pure helpers (tested)
